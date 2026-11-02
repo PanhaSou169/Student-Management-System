@@ -23,15 +23,14 @@ import java.util.concurrent.Executors;
  *     java  -cp ".;mysql-connector-j.jar" ApiServer
  *
  * Then open http://localhost:8080
- *
- * Security: the browser never sends "who am I" in the body. Login returns a random
- * token; every other request must carry it in the Authorization header, and the
- * server looks up the user from the token. Role rules still live in SchoolService.
  */
 public class ApiServer {
     static final int DEFAULT_PORT = 8080;
     static final long SESSION_MS = 2 * 60 * 60 * 1000L; // 2 hours
-    static final Set<String> STATIC_FILES = Set.of("index.html", "app.js");
+
+    // FIX #1 — extras.js must be served too, otherwise all enhancements die
+    static final Set<String> STATIC_FILES = Set.of("index.html", "app.js", "extras.js");
+
     static final SecureRandom RANDOM = new SecureRandom();
     static final Scanner IN = new Scanner(System.in);
 
@@ -41,11 +40,7 @@ public class ApiServer {
 
     static class ApiException extends RuntimeException {
         final int status;
-
-        ApiException(int status, String message) {
-            super(message);
-            this.status = status;
-        }
+        ApiException(int status, String message) { super(message); this.status = status; }
     }
 
     static AuthService auth;
@@ -55,12 +50,8 @@ public class ApiServer {
 
     public static void main(String[] args) throws Exception {
         final int port;
-        try {
-            port = configuredPort(args);
-        } catch (IllegalArgumentException e) {
-            System.err.println(e.getMessage());
-            return;
-        }
+        try { port = configuredPort(args); }
+        catch (IllegalArgumentException e) { System.err.println(e.getMessage()); return; }
 
         Clock clock = Clock.systemDefaultZone();
         String dbUser = System.getenv("SMS_DB_USER") != null ? System.getenv("SMS_DB_USER") : Config.DB_USER;
@@ -80,19 +71,14 @@ public class ApiServer {
         school = new SchoolService(db, clock, audit);
         if (!auth.hasAdmin()) firstRunSetup();
 
-        // Loopback only: bind to a wildcard address if other computers must connect.
         HttpServer server = HttpServer.create(new InetSocketAddress(InetAddress.getLoopbackAddress(), port), 0);
         server.createContext("/api/", ApiServer::handleApi);
         server.createContext("/", ApiServer::handleStatic);
-        // One worker thread: the services share a single JDBC connection, so requests run one at a time.
         server.setExecutor(Executors.newSingleThreadExecutor());
         server.start();
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             server.stop(0);
-            try {
-                db.close();
-            } catch (Exception ignored) {
-            }
+            try { db.close(); } catch (Exception ignored) { }
         }));
         System.out.println("Server running -> http://localhost:" + server.getAddress().getPort() + "   (Ctrl+C to stop)");
     }
@@ -138,18 +124,13 @@ public class ApiServer {
         try {
             cors(ex);
             String method = ex.getRequestMethod();
-            if (method.equals("OPTIONS")) {
-                ex.sendResponseHeaders(204, -1);
-                return;
-            }
+            if (method.equals("OPTIONS")) { ex.sendResponseHeaders(204, -1); return; }
+
             String path = ex.getRequestURI().getPath().substring(4); // strip "/api"
             Map<String, String> q = query(ex.getRequestURI().getRawQuery());
             String route = method + " " + path;
 
-            if (route.equals("POST /login")) {
-                login(ex);
-                return;
-            }
+            if (route.equals("POST /login")) { login(ex); return; }
             User me = authenticate(ex);
 
             switch (route) {
@@ -157,6 +138,22 @@ public class ApiServer {
                     sessions.remove(token(ex));
                     ok(ex);
                 }
+
+                // FIX #2 — GET /users for the KPI cards
+                case "GET /users" -> {
+                    if (!me.is("ADMIN")) throw new ApiException(403, "Only an admin can list users.");
+                    List<Map<String, Object>> out = new ArrayList<>();
+                    for (User u : school.allUsers()) {
+                        Map<String, Object> m = new LinkedHashMap<>();
+                        m.put("id", u.id());
+                        m.put("name", u.name());
+                        m.put("role", u.role());
+                        m.put("subject", u.subject());
+                        out.add(m);
+                    }
+                    json(ex, 200, out);
+                }
+
                 case "POST /users" -> {
                     if (!me.is("ADMIN")) throw new ApiException(403, "Only an admin can create users.");
                     Map<String, Object> b = body(ex);
@@ -164,6 +161,14 @@ public class ApiServer {
                             str(b, "subject"), str(b, "password"));
                     json(ex, 201, Map.of("status", "OK", "id", id));
                 }
+
+                // FIX #3 — change own password
+                case "POST /users/change-password" -> {
+                    Map<String, Object> b = body(ex);
+                    auth.changePassword(me, str(b, "currentPassword"), str(b, "newPassword"));
+                    ok(ex);
+                }
+
                 case "POST /grades/add" -> {
                     Map<String, Object> b = body(ex);
                     school.addGrade(me, str(b, "studentId"), str(b, "subject"), num(b, "score"));
@@ -174,6 +179,14 @@ public class ApiServer {
                     school.updateGrade(me, str(b, "studentId"), str(b, "subject"), num(b, "score"));
                     ok(ex);
                 }
+
+                // FIX #4 — delete grade
+                case "POST /grades/delete" -> {
+                    Map<String, Object> b = body(ex);
+                    school.deleteGrade(me, str(b, "studentId"), str(b, "subject"));
+                    ok(ex);
+                }
+
                 case "GET /stats" -> {
                     List<Map<String, Object>> out = new ArrayList<>();
                     for (SubjectStat s : school.classStats(me)) {
@@ -190,9 +203,7 @@ public class ApiServer {
                     int limit;
                     try {
                         limit = Math.max(1, Math.min(200, Integer.parseInt(q.getOrDefault("limit", "20"))));
-                    } catch (NumberFormatException e) {
-                        limit = 20;
-                    }
+                    } catch (NumberFormatException e) { limit = 20; }
                     json(ex, 200, school.auditTrail(me, limit));
                 }
                 case "GET /export/csv" -> sendFile(ex, school.exportCsv(me), "text/csv");
@@ -261,12 +272,8 @@ public class ApiServer {
             if (t != null) sessions.remove(t);
             throw new ApiException(401, "Please log in.");
         }
-        // Re-read the user each time, so a deleted account or changed role takes effect immediately.
         Optional<User> u = school.find(s.userId());
-        if (u.isEmpty()) {
-            sessions.remove(t);
-            throw new ApiException(401, "Account no longer exists.");
-        }
+        if (u.isEmpty()) { sessions.remove(t); throw new ApiException(401, "Account no longer exists."); }
         return u.get();
     }
 
@@ -322,9 +329,7 @@ public class ApiServer {
     static void send(HttpExchange ex, int status, String type, byte[] data) throws IOException {
         ex.getResponseHeaders().set("Content-Type", type);
         ex.sendResponseHeaders(status, data.length);
-        try (var os = ex.getResponseBody()) {
-            os.write(data);
-        }
+        try (var os = ex.getResponseBody()) { os.write(data); }
     }
 
     static void sendFile(HttpExchange ex, Path file, String type) throws IOException {
@@ -332,7 +337,6 @@ public class ApiServer {
         send(ex, 200, type + "; charset=utf-8", Files.readAllBytes(file));
     }
 
-    /** Serves index.html and app.js from the folder you run the server in (nothing else). */
     static void handleStatic(HttpExchange ex) throws IOException {
         try {
             String p = ex.getRequestURI().getPath();
@@ -360,28 +364,17 @@ public class ApiServer {
     static final class Json {
         private final String s;
         private int i;
+        private Json(String s) { this.s = s; }
 
-        private Json(String s) {
-            this.s = s;
-        }
-
-        /** Parses a flat object whose values are strings, numbers, true/false or null. */
         static Map<String, Object> parseObject(String text) {
             Json j = new Json(text);
             try {
                 Map<String, Object> m = new HashMap<>();
-                j.ws();
-                j.expect('{');
-                j.ws();
+                j.ws(); j.expect('{'); j.ws();
                 if (j.s.charAt(j.i) == '}') return m;
                 while (true) {
-                    j.ws();
-                    String k = j.string();
-                    j.ws();
-                    j.expect(':');
-                    j.ws();
-                    m.put(k, j.value());
-                    j.ws();
+                    j.ws(); String k = j.string(); j.ws(); j.expect(':'); j.ws();
+                    m.put(k, j.value()); j.ws();
                     char c = j.s.charAt(j.i++);
                     if (c == '}') return m;
                     if (c != ',') throw new IllegalArgumentException();
@@ -391,13 +384,8 @@ public class ApiServer {
             }
         }
 
-        private void ws() {
-            while (i < s.length() && Character.isWhitespace(s.charAt(i))) i++;
-        }
-
-        private void expect(char c) {
-            if (s.charAt(i++) != c) throw new IllegalArgumentException();
-        }
+        private void ws() { while (i < s.length() && Character.isWhitespace(s.charAt(i))) i++; }
+        private void expect(char c) { if (s.charAt(i++) != c) throw new IllegalArgumentException(); }
 
         private Object value() {
             if (s.charAt(i) == '"') return string();
@@ -424,7 +412,7 @@ public class ApiServer {
                     case 'b' -> sb.append('\b');
                     case 'f' -> sb.append('\f');
                     case 'u' -> { sb.append((char) Integer.parseInt(s.substring(i, i + 4), 16)); i += 4; }
-                    default -> sb.append(e); // \" \\ \/
+                    default -> sb.append(e);
                 }
             }
         }
@@ -441,22 +429,16 @@ public class ApiServer {
             else if (o instanceof Double d && (d.isNaN() || d.isInfinite())) sb.append("null");
             else if (o instanceof Number || o instanceof Boolean) sb.append(o);
             else if (o instanceof Map<?, ?> m) {
-                sb.append('{');
-                boolean first = true;
+                sb.append('{'); boolean first = true;
                 for (Map.Entry<?, ?> e : m.entrySet()) {
-                    if (!first) sb.append(',');
-                    first = false;
-                    quote(sb, String.valueOf(e.getKey()));
-                    sb.append(':');
-                    put(sb, e.getValue());
+                    if (!first) sb.append(','); first = false;
+                    quote(sb, String.valueOf(e.getKey())); sb.append(':'); put(sb, e.getValue());
                 }
                 sb.append('}');
             } else if (o instanceof Collection<?> c) {
-                sb.append('[');
-                boolean first = true;
+                sb.append('['); boolean first = true;
                 for (Object item : c) {
-                    if (!first) sb.append(',');
-                    first = false;
+                    if (!first) sb.append(','); first = false;
                     put(sb, item);
                 }
                 sb.append(']');
