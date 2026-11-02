@@ -4,245 +4,177 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>School Management System</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --primary-color:#111c33; --secondary-color:#4f46e5; --secondary-light:#6366f1;
-            --success-color:#10b981; --danger-color:#ef4444; --warning-color:#f59e0b;
-            --bg-color:#eef2f8; --card-bg:#ffffff; --surface-alt:#f8fafc; --input-bg:#f8fafc;
-            --text-color:#0f172a; --text-muted:#64748b; --text-subtle:#94a3b8;
-            --border-color:#e2e8f0; --border-strong:#cbd5e1;
-            --ring:rgba(79,70,229,.18); --ring-danger:rgba(239,68,68,.18);
-            --radius-sm:8px; --radius:12px; --radius-lg:18px;
-            --shadow-xs:0 1px 2px rgba(15,23,42,.06);
-            --shadow-sm:0 1px 2px rgba(15,23,42,.05),0 6px 16px -12px rgba(15,23,42,.35);
-            --shadow:0 1px 2px rgba(15,23,42,.05),0 14px 34px -20px rgba(15,23,42,.45);
-            --shadow-lg:0 30px 70px -34px rgba(15,23,42,.55);
-            --pass-bg:#dcfce7; --pass-fg:#15803d; --fail-bg:#fee2e2; --fail-fg:#b91c1c;
-            --header-bg:
-                radial-gradient(900px 220px at 12% -40%, rgba(99,102,241,.55), transparent 70%),
-                linear-gradient(115deg,#0b1220 0%,#14213a 48%,#1e1b4b 100%);
-            --font-sans:"Inter","Segoe UI",Tahoma,Geneva,Verdana,sans-serif;
+            --primary-color: #2c3e50;
+            --secondary-color: #3498db;
+            --success-color: #2ecc71;
+            --danger-color: #e74c3c;
+            --warning-color: #f39c12;
+            --bg-color: #f4f6f9;
+            --card-bg: #ffffff;
+            --text-color: #333333;
+            --border-color: #e0e0e0;
         }
-        @media (prefers-color-scheme: dark) {
-            :root {
-                --bg-color:#070b14; --card-bg:#0f172a; --surface-alt:#0b1220; --input-bg:#0b1220;
-                --text-color:#e2e8f0; --text-muted:#94a3b8; --text-subtle:#64748b;
-                --border-color:#1e293b; --border-strong:#334155;
-                --ring:rgba(129,140,248,.28); --ring-danger:rgba(248,113,113,.28);
-                --shadow-xs:0 1px 2px rgba(0,0,0,.5);
-                --shadow-sm:0 1px 2px rgba(0,0,0,.45),0 8px 20px -14px rgba(0,0,0,.9);
-                --shadow:0 1px 2px rgba(0,0,0,.5),0 18px 40px -24px rgba(0,0,0,.95);
-                --shadow-lg:0 34px 80px -38px rgba(0,0,0,1);
-                --pass-bg:rgba(16,185,129,.14); --pass-fg:#6ee7b7;
-                --fail-bg:rgba(239,68,68,.14); --fail-fg:#fca5a5;
-            }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
-        *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-        html{-webkit-text-size-adjust:100%;scroll-behavior:smooth}
-        body{
-            font-family:var(--font-sans);font-size:15px;line-height:1.55;color:var(--text-color);
-            background-color:var(--bg-color);
-            background-image:
-                radial-gradient(1100px 520px at 8% -10%, rgba(99,102,241,.10), transparent 62%),
-                radial-gradient(900px 460px at 100% 0%, rgba(14,165,233,.10), transparent 58%);
-            background-attachment:fixed;display:flex;flex-direction:column;min-height:100vh;
-            -webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
         }
-        body.modal-open{overflow:hidden}
-        ::selection{background:var(--secondary-color);color:#fff}
-        ::-webkit-scrollbar{width:10px;height:10px}
-        ::-webkit-scrollbar-track{background:transparent}
-        ::-webkit-scrollbar-thumb{background:var(--border-strong);border:2px solid transparent;background-clip:content-box;border-radius:99px}
-        ::-webkit-scrollbar-thumb:hover{background-color:var(--text-subtle);background-clip:content-box}
-        :focus-visible{outline:3px solid var(--ring);outline-offset:2px;border-radius:4px}
 
-        header{
-            position:sticky;top:0;z-index:50;background:var(--header-bg);background-color:var(--primary-color);
-            color:#fff;padding:0 1.75rem;height:66px;display:flex;justify-content:space-between;align-items:center;gap:1rem;
-            box-shadow:0 1px 0 rgba(255,255,255,.07) inset,0 12px 30px -22px rgba(2,6,23,.95);
-            backdrop-filter:saturate(140%) blur(8px);
+        header {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
-        header h1{display:flex;align-items:center;gap:.75rem;font-size:1.02rem;font-weight:600;letter-spacing:.015em;white-space:nowrap}
-        header h1::before{content:"";flex:none;width:32px;height:32px;border-radius:10px;
-            background:linear-gradient(135deg,#a5b4fc 0%,#6366f1 48%,#22d3ee 100%);
-            box-shadow:0 0 0 1px rgba(255,255,255,.22) inset,0 8px 20px -8px rgba(99,102,241,.95)}
-        .user-info{display:flex;align-items:center;gap:.6rem;font-size:.875rem}
-        #nav-user-details{display:inline-flex;align-items:center;gap:.55rem;padding:.38rem .85rem;border-radius:999px;
-            background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);color:#e8eefc;
-            font-weight:500;letter-spacing:.01em;max-width:40vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-        #nav-user-details::before{content:"";flex:none;width:8px;height:8px;border-radius:50%;
-            background:#34d399;box-shadow:0 0 0 3px rgba(52,211,153,.22)}
-        .user-info button{
-            font-family:inherit;font-size:.82rem;font-weight:600;letter-spacing:.02em;color:#fecaca;
-            background:rgba(239,68,68,.14);border:1px solid rgba(239,68,68,.34);
-            padding:.48rem 1rem;border-radius:9px;cursor:pointer;
-            transition:background .18s ease,color .18s ease,border-color .18s ease,transform .12s ease;
+
+        header h1 {
+            font-size: 1.5rem;
         }
-        .user-info button:hover{background:var(--danger-color);border-color:var(--danger-color);color:#fff;transform:translateY(-1px)}
-        .user-info button:active{transform:translateY(0)}
-        .user-info button.btn-account{color:#bae6fd;background:rgba(56,189,248,.12);border-color:rgba(56,189,248,.3)}
-        .user-info button.btn-account:hover{background:var(--secondary-color);border-color:var(--secondary-color);color:#fff}
 
-        main{flex:1;width:100%;max-width:1200px;margin:0 auto;padding:2.25rem 1.75rem 4rem}
-
-        .card{background:var(--card-bg);border:1px solid var(--border-color);border-radius:var(--radius-lg);
-            padding:1.75rem;box-shadow:var(--shadow-sm);margin-bottom:1.5rem;
-            transition:box-shadow .28s ease,border-color .28s ease}
-        .card:hover{box-shadow:var(--shadow)}
-        h2{display:flex;align-items:center;gap:.7rem;font-size:1.06rem;font-weight:650;letter-spacing:-.01em;
-            color:var(--text-color);padding-bottom:.85rem;margin-bottom:1.35rem;border-bottom:1px solid var(--border-color)}
-        h2::before{content:"";flex:none;width:4px;height:20px;border-radius:99px;
-            background:linear-gradient(180deg,var(--secondary-light),var(--secondary-color));
-            box-shadow:0 0 14px -2px var(--secondary-color)}
-        h3{font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted);margin-bottom:1rem}
-
-        .form-group{margin-bottom:1.1rem}
-        .form-group label{display:block;margin-bottom:.45rem;font-size:.8rem;font-weight:600;letter-spacing:.02em;color:var(--text-muted)}
-        .form-group input,.form-group select{width:100%;font-family:inherit;font-size:.94rem;color:var(--text-color);
-            background:var(--input-bg);border:1px solid var(--border-color);border-radius:var(--radius);
-            padding:.72rem .9rem;transition:border-color .18s ease,box-shadow .18s ease,background .18s ease;appearance:none}
-        .form-group input::placeholder{color:var(--text-subtle)}
-        .form-group input:hover,.form-group select:hover{border-color:var(--border-strong)}
-        .form-group input:focus,.form-group select:focus{outline:none;background:var(--card-bg);
-            border-color:var(--secondary-color);box-shadow:0 0 0 4px var(--ring)}
-        .form-group select{padding-right:2.4rem;
-            background-image:url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'/%3e%3c/svg%3e");
-            background-repeat:no-repeat;background-position:right .85rem center;background-size:15px;cursor:pointer}
-        .form-group input:disabled{opacity:.55;cursor:not-allowed}
-
-        .btn{display:inline-flex;align-items:center;justify-content:center;gap:.5rem;font-family:inherit;
-            font-size:.9rem;font-weight:600;letter-spacing:.01em;color:#fff;
-            background:linear-gradient(180deg,var(--secondary-light),var(--secondary-color));
-            border:1px solid rgba(255,255,255,.1);border-radius:var(--radius);padding:.72rem 1.4rem;
-            cursor:pointer;white-space:nowrap;
-            box-shadow:0 1px 2px rgba(15,23,42,.18),0 10px 22px -14px var(--secondary-color);
-            transition:transform .14s ease,box-shadow .22s ease,filter .18s ease}
-        .btn:hover{filter:brightness(1.07);transform:translateY(-1px);
-            box-shadow:0 2px 4px rgba(15,23,42,.18),0 16px 28px -14px var(--secondary-color)}
-        .btn:active{transform:translateY(0);filter:brightness(.97)}
-        .btn:focus-visible{outline:none;box-shadow:0 0 0 4px var(--ring)}
-        .btn[disabled]{opacity:.6;cursor:not-allowed;transform:none}
-        .btn-danger{background:linear-gradient(180deg,#f87171,var(--danger-color));
-            box-shadow:0 1px 2px rgba(15,23,42,.18),0 10px 22px -14px var(--danger-color)}
-        .btn-success{background:linear-gradient(180deg,#34d399,var(--success-color));
-            box-shadow:0 1px 2px rgba(15,23,42,.18),0 10px 22px -14px var(--success-color)}
-        .btn-ghost{background:transparent;color:var(--text-muted);border:1px solid var(--border-color);box-shadow:none}
-        .btn-ghost:hover{background:var(--surface-alt);color:var(--text-color);box-shadow:none;filter:none}
-
-        .table-wrap{overflow-x:auto;border:1px solid var(--border-color);border-radius:var(--radius);
-            background:var(--card-bg);-webkit-overflow-scrolling:touch}
-        table{width:100%;min-width:520px;border-collapse:separate;border-spacing:0;font-size:.9rem}
-        th,td{padding:.8rem 1rem;text-align:left;vertical-align:middle}
-        th{position:sticky;top:0;z-index:1;background:var(--surface-alt);color:var(--text-muted);
-            font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;white-space:nowrap;
-            border-bottom:1px solid var(--border-color)}
-        td{border-bottom:1px solid var(--border-color);color:var(--text-color)}
-        tbody tr:last-child td{border-bottom:none}
-        tbody tr{transition:background .15s ease}
-        tbody tr:hover{background:var(--surface-alt)}
-        td[colspan]{text-align:center;color:var(--text-subtle);padding:2rem 1rem;font-style:italic}
-
-        .badge{display:inline-flex;align-items:center;gap:.4rem;padding:.28rem .7rem;border-radius:999px;
-            font-size:.74rem;font-weight:700;letter-spacing:.03em;text-transform:uppercase;line-height:1.4;white-space:nowrap}
-        .badge::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
-        .badge-pass{background:var(--pass-bg);color:var(--pass-fg)}
-        .badge-fail{background:var(--fail-bg);color:var(--fail-fg)}
-
-        #view-login{max-width:430px;margin:4rem auto 2rem;padding:2.25rem 2rem 2rem;border-radius:22px;
-            box-shadow:var(--shadow-lg);position:relative;overflow:hidden}
-        #view-login::before{content:"";position:absolute;inset:0 0 auto 0;height:4px;
-            background:linear-gradient(90deg,var(--secondary-light),#22d3ee,var(--success-color))}
-        #view-login h2{justify-content:center;border-bottom:none;padding-bottom:0;margin-bottom:.4rem;font-size:1.28rem}
-        #view-login h2::before{display:none}
-        .card-subtitle{text-align:center;font-size:.875rem;color:var(--text-muted);margin-bottom:1.75rem}
-        #login-form .btn{width:100%;margin-top:.5rem;padding:.82rem 1.4rem}
-
-        /* KPI row */
-        .kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));
-            gap:1rem;margin-bottom:1.5rem;animation:fadeUp .35s ease both}
-        .kpi-card{background:var(--card-bg);border:1px solid var(--border-color);border-radius:var(--radius);
-            padding:1.1rem 1.25rem 1.1rem 1.4rem;box-shadow:var(--shadow-sm);position:relative;overflow:hidden;
-            transition:box-shadow .25s ease,transform .2s ease}
-        .kpi-card:hover{box-shadow:var(--shadow);transform:translateY(-1px)}
-        .kpi-card::before{content:"";position:absolute;top:0;left:0;width:4px;height:100%;
-            background:linear-gradient(180deg,var(--secondary-light),var(--secondary-color))}
-        .kpi-card.kpi-ok::before{background:linear-gradient(180deg,#34d399,var(--success-color))}
-        .kpi-card.kpi-warn::before{background:linear-gradient(180deg,#fbbf24,var(--warning-color))}
-        .kpi-label{display:block;font-size:.7rem;font-weight:700;text-transform:uppercase;
-            letter-spacing:.09em;color:var(--text-muted);margin-bottom:.35rem}
-        .kpi-value{display:block;font-size:1.7rem;font-weight:700;color:var(--text-color);
-            letter-spacing:-.02em;line-height:1.15}
-        .kpi-value small{font-size:.85rem;font-weight:500;color:var(--text-muted);margin-left:.2rem}
-
-        /* Alerts */
-        .alert{display:none;padding:.85rem 1.1rem;border-radius:var(--radius);font-size:.875rem;
-            font-weight:500;line-height:1.5;margin-bottom:1.25rem;border:1px solid transparent;
-            animation:slideDown .28s ease both;word-break:break-word}
-        .alert::before{content:"";display:inline-flex;align-items:center;justify-content:center;
-            width:18px;height:18px;border-radius:50%;font-size:.7rem;font-weight:800;color:#fff;
-            margin-right:.55rem;vertical-align:-3px;flex:none}
-        .alert-error{background:var(--fail-bg);color:var(--fail-fg);border-color:rgba(239,68,68,.3)}
-        .alert-error::before{content:"!";background:var(--danger-color)}
-        .alert-success{background:var(--pass-bg);color:var(--pass-fg);border-color:rgba(16,185,129,.3)}
-        .alert-success::before{content:"✓";background:var(--success-color)}
-
-        /* Modal */
-        .modal-overlay{position:fixed;inset:0;z-index:100;background:rgba(15,23,42,.55);
-            backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;
-            padding:1.25rem;animation:fadeIn .18s ease both}
-        .modal-overlay.hidden{display:none !important}
-        .modal{background:var(--card-bg);border:1px solid var(--border-color);border-radius:var(--radius-lg);
-            padding:1.75rem;width:100%;max-width:420px;box-shadow:var(--shadow-lg);animation:fadeUp .22s ease both}
-        .modal h2{border-bottom:1px solid var(--border-color)}
-        .modal-actions{display:flex;gap:.6rem;justify-content:flex-end;margin-top:1.25rem}
-
-        .hidden{display:none !important}
-        .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:1.75rem;align-items:start}
-        #admin-panel .grid-2 > div + div{border-left:1px solid var(--border-color);padding-left:1.75rem}
-        #admin-panel .grid-2 > div > p{color:var(--text-muted);font-size:.875rem}
-        #student-search-bar{background:var(--surface-alt);border:1px solid var(--border-color);
-            border-radius:var(--radius);padding:1rem 1.1rem 1.15rem;margin-bottom:1.25rem}
-
-        @keyframes slideDown{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
-        @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
-        @keyframes fadeIn{from{opacity:0}to{opacity:1}}
-        #view-login:not(.hidden){animation:fadeUp .4s ease both}
-        #view-dashboard > div:not(.hidden){animation:fadeUp .35s ease both}
-
-        @media (prefers-reduced-motion: reduce){
-            *,*::before,*::after{animation-duration:.001ms !important;animation-iteration-count:1 !important;
-                transition-duration:.001ms !important;scroll-behavior:auto !important}
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
         }
-        @media (max-width:900px){
-            .grid-2{grid-template-columns:1fr;gap:1.5rem}
-            #admin-panel .grid-2 > div + div{border-left:none;border-top:1px solid var(--border-color);
-                padding-left:0;padding-top:1.5rem}
+
+        .user-info button {
+            background-color: var(--danger-color);
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            cursor: pointer;
         }
-        @media (max-width:720px){
-            header{padding:0 1.1rem;height:60px}
-            header h1{font-size:.92rem;gap:.6rem}
-            header h1::before{width:28px;height:28px;border-radius:9px}
-            #nav-user-details{font-size:.78rem;padding:.3rem .65rem;max-width:30vw}
-            main{padding:1.5rem 1rem 3rem}
-            .card{padding:1.25rem;border-radius:15px}
-            #view-login{margin:2rem auto 1rem;padding:1.75rem 1.35rem}
-            h2{font-size:1rem}
-            .btn{padding:.68rem 1.15rem}
-            .kpi-value{font-size:1.45rem}
+
+        main {
+            flex: 1;
+            padding: 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+            width: 100%;
         }
-        @media (max-width:480px){
-            header h1{font-size:.84rem}
-            header h1::before{width:24px;height:24px;border-radius:8px}
-            #nav-user-details{display:none}
+
+        .card {
+            background: var(--card-bg);
+            border-radius: 8px;
+            padding: 1.5rem;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            margin-bottom: 1.5rem;
         }
-        @media print{
-            header,.btn,.user-info,.modal-overlay{display:none !important}
-            body{background:#fff}
-            .card{box-shadow:none;border-color:#ddd;break-inside:avoid}
+
+        h2 {
+            margin-bottom: 1rem;
+            color: var(--primary-color);
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 0.5rem;
         }
+
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+        }
+
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            font-size: 1rem;
+        }
+
+        .btn {
+            background-color: var(--secondary-color);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: bold;
+        }
+
+        .btn:hover {
+            opacity: 0.9;
+        }
+
+        .btn-danger {
+            background-color: var(--danger-color);
+        }
+
+        .btn-success {
+            background-color: var(--success-color);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+        }
+
+        th, td {
+            padding: 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        th {
+            background-color: #f8f9fa;
+            color: var(--primary-color);
+        }
+
+        .badge {
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            font-weight: bold;
+        }
+
+        .badge-pass { background-color: #d4edda; color: #155724; }
+        .badge-fail { background-color: #f8d7da; color: #721c24; }
+
+        #auth-container {
+            max-width: 400px;
+            margin: 5rem auto;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        .alert {
+            padding: 0.75rem 1rem;
+            border-radius: 4px;
+            margin-bottom: 1rem;
+            display: none;
+        }
+
+        .alert-error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .alert-success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
     </style>
 </head>
 <body>
@@ -251,55 +183,30 @@
         <h1>School Management Portal</h1>
         <div id="user-nav" class="user-info hidden">
             <span id="nav-user-details"></span>
-            <button type="button" class="btn-account" onclick="openPasswordModal()">Change Password</button>
-            <button type="button" onclick="logout()">Logout</button>
+            <button onclick="logout()">Logout</button>
         </div>
     </header>
 
     <main>
         <div id="alert-box" class="alert"></div>
 
-        <!-- LOGIN -->
         <div id="view-login" class="card">
             <h2>System Login</h2>
-            <p class="card-subtitle">Sign in to manage students, grades and reports.</p>
             <form id="login-form" onsubmit="handleLogin(event)">
                 <div class="form-group">
                     <label for="login-id">User ID (e.g., A001, T001, S001)</label>
-                    <input type="text" id="login-id" autocomplete="username" required>
+                    <input type="text" id="login-id" required>
                 </div>
                 <div class="form-group">
                     <label for="login-password">Password</label>
-                    <input type="password" id="login-password" autocomplete="current-password" required>
+                    <input type="password" id="login-password" required>
                 </div>
                 <button type="submit" class="btn">Log In</button>
             </form>
         </div>
 
-        <!-- DASHBOARD -->
         <div id="view-dashboard" class="hidden">
-
-            <!-- KPI row (ADMIN + TEACHER) -->
-            <div id="kpi-row" class="kpi-row hidden">
-                <div class="kpi-card">
-                    <span class="kpi-label">Total Students</span>
-                    <span class="kpi-value" id="kpi-students">…</span>
-                </div>
-                <div class="kpi-card">
-                    <span class="kpi-label">Total Teachers</span>
-                    <span class="kpi-value" id="kpi-teachers">…</span>
-                </div>
-                <div class="kpi-card kpi-ok">
-                    <span class="kpi-label">Average Score</span>
-                    <span class="kpi-value" id="kpi-average">…</span>
-                </div>
-                <div class="kpi-card kpi-warn">
-                    <span class="kpi-label">Pass Rate</span>
-                    <span class="kpi-value" id="kpi-passrate">…</span>
-                </div>
-            </div>
-
-            <!-- ADMIN -->
+            
             <div id="admin-panel" class="hidden">
                 <div class="card">
                     <h2>Admin Controls</h2>
@@ -325,13 +232,13 @@
                                 </div>
                                 <div class="form-group">
                                     <label>Initial Password</label>
-                                    <input type="password" id="new-user-password" autocomplete="new-password" required>
+                                    <input type="password" id="new-user-password" required>
                                 </div>
                                 <button type="submit" class="btn btn-success">Create User</button>
                             </form>
                         </div>
                         <div>
-                            <h3>Data &amp; System Tools</h3>
+                            <h3>Data & System Tools</h3>
                             <p style="margin-bottom: 1rem;">Export or generate system recovery files.</p>
                             <button class="btn" onclick="exportCSV()">Export Grades (CSV)</button>
                             <button class="btn" onclick="backupDB()" style="margin-top: 0.5rem;">Backup Database (SQL)</button>
@@ -341,18 +248,20 @@
 
                 <div class="card">
                     <h2>System Audit Trail</h2>
-                    <div class="table-wrap">
-                        <table id="audit-table">
-                            <thead>
-                                <tr><th>Timestamp</th><th>Actor</th><th>Action</th><th>Details</th></tr>
-                            </thead>
-                            <tbody></tbody>
-                        </table>
-                    </div>
+                    <table id="audit-table">
+                        <thead>
+                            <tr>
+                                <th>Timestamp</th>
+                                <th>Actor</th>
+                                <th>Action</th>
+                                <th>Details</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
                 </div>
             </div>
 
-            <!-- TEACHER -->
             <div id="teacher-panel" class="hidden">
                 <div class="card">
                     <h2>Manage Grades</h2>
@@ -375,7 +284,6 @@
                                 <select id="grade-action">
                                     <option value="ADD">Add Grade</option>
                                     <option value="UPDATE">Update Grade</option>
-                                    <option value="DELETE">Delete Grade</option>
                                 </select>
                             </div>
                         </div>
@@ -385,18 +293,20 @@
 
                 <div class="card">
                     <h2>Class Analytics</h2>
-                    <div class="table-wrap">
-                        <table id="stats-table">
-                            <thead>
-                                <tr><th>Subject</th><th>Enrolled Students</th><th>Average Score</th><th>Passed Students</th></tr>
-                            </thead>
-                            <tbody></tbody>
-                        </table>
-                    </div>
+                    <table id="stats-table">
+                        <thead>
+                            <tr>
+                                <th>Subject</th>
+                                <th>Enrolled Students</th>
+                                <th>Average Score</th>
+                                <th>Passed Students</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
                 </div>
             </div>
 
-            <!-- STUDENT -->
             <div id="student-panel" class="hidden">
                 <div class="card">
                     <h2>Academic Grades Overview</h2>
@@ -405,46 +315,27 @@
                         <input type="text" id="search-student-id" placeholder="Enter Student ID to fetch report">
                         <button class="btn" onclick="loadStudentGrades()" style="margin-top: 0.5rem;">Search Grades</button>
                     </div>
-                    <div class="table-wrap">
-                        <table id="grades-table">
-                            <thead>
-                                <tr><th>Subject</th><th>Score</th><th>Grade Letter</th><th>Status</th></tr>
-                            </thead>
-                            <tbody></tbody>
-                        </table>
-                    </div>
+                    <table id="grades-table">
+                        <thead>
+                            <tr>
+                                <th>Subject</th>
+                                <th>Score</th>
+                                <th>Grade Letter</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
                 </div>
             </div>
 
         </div>
     </main>
 
-    <!-- Change Password Modal -->
-    <div id="password-modal" class="modal-overlay hidden" onclick="if(event.target===this)closePasswordModal()">
-        <div class="modal" role="dialog" aria-modal="true" aria-labelledby="password-modal-title">
-            <h2 id="password-modal-title">Change Password</h2>
-            <form id="password-form" onsubmit="handleChangePassword(event)">
-                <div class="form-group">
-                    <label>Current Password</label>
-                    <input type="password" id="pwd-current" autocomplete="current-password" required>
-                </div>
-                <div class="form-group">
-                    <label>New Password</label>
-                    <input type="password" id="pwd-new" autocomplete="new-password" minlength="4" required>
-                </div>
-                <div class="form-group">
-                    <label>Confirm New Password</label>
-                    <input type="password" id="pwd-confirm" autocomplete="new-password" minlength="4" required>
-                </div>
-                <div class="modal-actions">
-                    <button type="button" class="btn btn-ghost" onclick="closePasswordModal()">Cancel</button>
-                    <button type="submit" class="btn">Update Password</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
+    <!-- បន្ថែម Script របស់ Supabase នៅទីនេះ -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <!-- បន្ទាប់មកទើបហៅ app.js របស់អ្នក -->
     <script src="app.js" defer></script>
-    <script src="extras.js" defer></script>
 </body>
 </html>
