@@ -83,7 +83,6 @@
             padding-bottom: 0.5rem;
         }
 
-        /* Form Styling */
         .form-group {
             margin-bottom: 1rem;
         }
@@ -125,7 +124,6 @@
             background-color: var(--success-color);
         }
 
-        /* Table Styling */
         table {
             width: 100%;
             border-collapse: collapse;
@@ -153,7 +151,6 @@
         .badge-pass { background-color: #d4edda; color: #155724; }
         .badge-fail { background-color: #f8d7da; color: #721c24; }
 
-        /* Auth View Container */
         #auth-container {
             max-width: 400px;
             margin: 5rem auto;
@@ -193,7 +190,6 @@
     <main>
         <div id="alert-box" class="alert"></div>
 
-        <!-- LOGIN SCREEN -->
         <div id="view-login" class="card">
             <h2>System Login</h2>
             <form id="login-form" onsubmit="handleLogin(event)">
@@ -209,10 +205,8 @@
             </form>
         </div>
 
-        <!-- DASHBOARD (Renders dynamically based on role) -->
         <div id="view-dashboard" class="hidden">
             
-            <!-- ADMIN VIEW -->
             <div id="admin-panel" class="hidden">
                 <div class="card">
                     <h2>Admin Controls</h2>
@@ -268,7 +262,6 @@
                 </div>
             </div>
 
-            <!-- TEACHER / GRADE ENTRY VIEW -->
             <div id="teacher-panel" class="hidden">
                 <div class="card">
                     <h2>Manage Grades</h2>
@@ -314,7 +307,6 @@
                 </div>
             </div>
 
-            <!-- STUDENT / REPORT VIEW -->
             <div id="student-panel" class="hidden">
                 <div class="card">
                     <h2>Academic Grades Overview</h2>
@@ -340,6 +332,10 @@
         </div>
     </main>
 
+    <!-- បន្ថែម Script របស់ Supabase នៅទីនេះ -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <!-- បន្ទាប់មកទើបហៅ app.js របស់អ្នក -->
     <script src="app.js" defer></script>
 </body>
 </html>

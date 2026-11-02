@@ -1,5 +1,5 @@
 const SUPABASE_URL = 'https://frotwvjkuriejaluvjvp.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZyb3R3dmprdXJpZWphbHV2anZwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTM2MzI3NjgsImV4cCI6MjEwOTIwODc2OH0.VBADQtaxalwttX3i6noXxh9l0_v1g2yvYZ_pEp_T208';
+const SUPABASE_KEY = 'sb_publishable_PBkf1n7QEz-3ANuDmi5u3A_1xDjrSDJ';
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 let currentUser = null;
@@ -52,6 +52,12 @@ async function handleLogin(event) {
     }
     
     currentUser = user;
+    
+    await supabaseClient.from('audit_log').insert([{ 
+        action: 'LOGIN', 
+        details: `User ${currentUser.name} (${currentUser.id}) logged in` 
+    }]);
+
     initDashboard();
 }
 
@@ -97,23 +103,54 @@ async function handleCreateUser(e) {
     e.preventDefault();
     const role = document.getElementById('new-user-role').value;
     const name = document.getElementById('new-user-name').value;
-    const subject = document.getElementById('new-user-subject').value;
     const password = document.getElementById('new-user-password').value;
+    
+    let subject = null;
+    if (role === 'TEACHER') {
+        subject = document.getElementById('new-user-subject').value;
+    }
 
     const prefix = role === 'ADMIN' ? 'A' : role === 'TEACHER' ? 'T' : 'S';
-    const newId = prefix + String(Math.floor(Math.random() * 1000)).padStart(3, '0');
+    
+    try {
+        const { data: existingUsers, error: fetchError } = await supabaseClient
+            .from('users')
+            .select('id')
+            .like('id', prefix + '%');
 
-    const { error } = await supabaseClient
-        .from('users')
-        .insert([{ id: newId, name, role, subject, password }]);
+        if (fetchError) throw fetchError;
 
-    if (error) {
-        showAlert("Error creating user: " + error.message, true);
-    } else {
-        showAlert(`${role} created. Their login ID is ${newId}`);
+        let maxNumber = 0;
+        if (existingUsers && existingUsers.length > 0) {
+            existingUsers.forEach(u => {
+                const num = parseInt(u.id.substring(1), 10);
+                if (!isNaN(num) && num > maxNumber) {
+                    maxNumber = num;
+                }
+            });
+        }
+
+        const newId = prefix + String(maxNumber + 1).padStart(3, '0');
+
+        const { error } = await supabaseClient
+            .from('users')
+            .insert([{ id: newId, name, role, subject, password }]);
+
+        if (error) throw error;
+
+        await supabaseClient.from('audit_log').insert([{ 
+            action: 'CREATE_USER', 
+            details: `Created ${role} ${name} with ID ${newId}` 
+        }]);
+
+        showAlert(`${role} created successfully! Their login ID is ${newId}`);
         document.getElementById('create-user-form').reset();
         toggleSubjectInput();
-        loadAuditLogs();
+        
+        if(typeof loadAuditLogs === 'function') loadAuditLogs();
+
+    } catch (error) {
+        showAlert("Error creating user: " + error.message, true);
     }
 }
 
@@ -131,6 +168,11 @@ async function handleSaveGrade(e) {
         showAlert("Error saving grade: " + error.message, true);
     } else {
         showAlert('Grade saved successfully');
+        await supabaseClient.from('audit_log').insert([{ 
+            action: 'SAVE_GRADE', 
+            details: `Saved grade for ${studentId} in ${subject}: ${score}` 
+        }]);
+        
         loadStats();
         if (currentUser.role === 'ADMIN') loadAuditLogs();
     }
@@ -209,13 +251,13 @@ async function loadAuditLogs() {
         .limit(20);
 
     if (error) {
-        showAlert("Error loading logs", true);
+        console.error("Error loading logs:", error.message);
         return;
     }
 
     document.querySelector('#audit-table tbody').innerHTML = logs.map(log => `<tr>
-        <td>${esc(log.created_at)}</td>
-        <td>-</td>
+        <td>${esc(log.created_at || 'Just now')}</td>
+        <td>System</td>
         <td>${esc(log.action)}</td>
         <td>${esc(log.details)}</td>
     </tr>`).join('');
