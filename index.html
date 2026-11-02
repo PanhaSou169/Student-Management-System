@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>School Management System</title>
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --secondary-color: #3498db;
+            --success-color: #2ecc71;
+            --danger-color: #e74c3c;
+            --warning-color: #f39c12;
+            --bg-color: #f4f6f9;
+            --card-bg: #ffffff;
+            --text-color: #333333;
+            --border-color: #e0e0e0;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        header {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        header h1 {
+            font-size: 1.5rem;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .user-info button {
+            background-color: var(--danger-color);
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        main {
+            flex: 1;
+            padding: 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        .card {
+            background: var(--card-bg);
+            border-radius: 8px;
+            padding: 1.5rem;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            margin-bottom: 1.5rem;
+        }
+
+        h2 {
+            margin-bottom: 1rem;
+            color: var(--primary-color);
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 0.5rem;
+        }
+
+        /* Form Styling */
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+        }
+
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            font-size: 1rem;
+        }
+
+        .btn {
+            background-color: var(--secondary-color);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: bold;
+        }
+
+        .btn:hover {
+            opacity: 0.9;
+        }
+
+        .btn-danger {
+            background-color: var(--danger-color);
+        }
+
+        .btn-success {
+            background-color: var(--success-color);
+        }
+
+        /* Table Styling */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+        }
+
+        th, td {
+            padding: 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        th {
+            background-color: #f8f9fa;
+            color: var(--primary-color);
+        }
+
+        .badge {
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            font-weight: bold;
+        }
+
+        .badge-pass { background-color: #d4edda; color: #155724; }
+        .badge-fail { background-color: #f8d7da; color: #721c24; }
+
+        /* Auth View Container */
+        #auth-container {
+            max-width: 400px;
+            margin: 5rem auto;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        .alert {
+            padding: 0.75rem 1rem;
+            border-radius: 4px;
+            margin-bottom: 1rem;
+            display: none;
+        }
+
+        .alert-error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .alert-success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>School Management Portal</h1>
+        <div id="user-nav" class="user-info hidden">
+            <span id="nav-user-details"></span>
+            <button onclick="logout()">Logout</button>
+        </div>
+    </header>
+
+    <main>
+        <div id="alert-box" class="alert"></div>
+
+        <!-- LOGIN SCREEN -->
+        <div id="view-login" class="card">
+            <h2>System Login</h2>
+            <form id="login-form" onsubmit="handleLogin(event)">
+                <div class="form-group">
+                    <label for="login-id">User ID (e.g., A001, T001, S001)</label>
+                    <input type="text" id="login-id" required>
+                </div>
+                <div class="form-group">
+                    <label for="login-password">Password</label>
+                    <input type="password" id="login-password" required>
+                </div>
+                <button type="submit" class="btn">Log In</button>
+            </form>
+        </div>
+
+        <!-- DASHBOARD (Renders dynamically based on role) -->
+        <div id="view-dashboard" class="hidden">
+            
+            <!-- ADMIN VIEW -->
+            <div id="admin-panel" class="hidden">
+                <div class="card">
+                    <h2>Admin Controls</h2>
+                    <div class="grid-2">
+                        <div>
+                            <h3>Create User Account</h3>
+                            <form id="create-user-form" onsubmit="handleCreateUser(event)">
+                                <div class="form-group">
+                                    <label>Role</label>
+                                    <select id="new-user-role" onchange="toggleSubjectInput()">
+                                        <option value="STUDENT">Student</option>
+                                        <option value="TEACHER">Teacher</option>
+                                        <option value="ADMIN">Admin</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label>Full Name</label>
+                                    <input type="text" id="new-user-name" required>
+                                </div>
+                                <div class="form-group hidden" id="subject-field">
+                                    <label>Teaching Subject</label>
+                                    <input type="text" id="new-user-subject">
+                                </div>
+                                <div class="form-group">
+                                    <label>Initial Password</label>
+                                    <input type="password" id="new-user-password" required>
+                                </div>
+                                <button type="submit" class="btn btn-success">Create User</button>
+                            </form>
+                        </div>
+                        <div>
+                            <h3>Data & System Tools</h3>
+                            <p style="margin-bottom: 1rem;">Export or generate system recovery files.</p>
+                            <button class="btn" onclick="exportCSV()">Export Grades (CSV)</button>
+                            <button class="btn" onclick="backupDB()" style="margin-top: 0.5rem;">Backup Database (SQL)</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h2>System Audit Trail</h2>
+                    <table id="audit-table">
+                        <thead>
+                            <tr>
+                                <th>Timestamp</th>
+                                <th>Actor</th>
+                                <th>Action</th>
+                                <th>Details</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- TEACHER / GRADE ENTRY VIEW -->
+            <div id="teacher-panel" class="hidden">
+                <div class="card">
+                    <h2>Manage Grades</h2>
+                    <form id="grade-form" onsubmit="handleSaveGrade(event)">
+                        <div class="grid-2">
+                            <div class="form-group">
+                                <label>Student ID</label>
+                                <input type="text" id="grade-student-id" placeholder="e.g., S001" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Subject</label>
+                                <input type="text" id="grade-subject" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Score (0 - 100)</label>
+                                <input type="number" id="grade-score" min="0" max="100" step="0.1" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Action</label>
+                                <select id="grade-action">
+                                    <option value="ADD">Add Grade</option>
+                                    <option value="UPDATE">Update Grade</option>
+                                </select>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-success">Save Grade Record</button>
+                    </form>
+                </div>
+
+                <div class="card">
+                    <h2>Class Analytics</h2>
+                    <table id="stats-table">
+                        <thead>
+                            <tr>
+                                <th>Subject</th>
+                                <th>Enrolled Students</th>
+                                <th>Average Score</th>
+                                <th>Passed Students</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- STUDENT / REPORT VIEW -->
+            <div id="student-panel" class="hidden">
+                <div class="card">
+                    <h2>Academic Grades Overview</h2>
+                    <div id="student-search-bar" class="form-group hidden">
+                        <label>Lookup Student ID</label>
+                        <input type="text" id="search-student-id" placeholder="Enter Student ID to fetch report">
+                        <button class="btn" onclick="loadStudentGrades()" style="margin-top: 0.5rem;">Search Grades</button>
+                    </div>
+                    <table id="grades-table">
+                        <thead>
+                            <tr>
+                                <th>Subject</th>
+                                <th>Score</th>
+                                <th>Grade Letter</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <script src="app.js" defer></script>
+</body>
+</html>
