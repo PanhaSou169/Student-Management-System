@@ -85,18 +85,8 @@
         /* ============================================================
            2. RESET & BASE
            ============================================================ */
-        *,
-        *::before,
-        *::after {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
-
-        html {
-            -webkit-text-size-adjust: 100%;
-            scroll-behavior: smooth;
-        }
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
 
         body {
             font-family: var(--font-sans);
@@ -115,11 +105,7 @@
             -moz-osx-font-smoothing: grayscale;
         }
 
-        ::selection {
-            background: var(--secondary-color);
-            color: #fff;
-        }
-
+        ::selection { background: var(--secondary-color); color: #fff; }
         ::-webkit-scrollbar { width: 10px; height: 10px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb {
@@ -130,11 +116,7 @@
         }
         ::-webkit-scrollbar-thumb:hover { background-color: var(--text-subtle); background-clip: content-box; }
 
-        :focus-visible {
-            outline: 3px solid var(--ring);
-            outline-offset: 2px;
-            border-radius: 4px;
-        }
+        :focus-visible { outline: 3px solid var(--ring); outline-offset: 2px; border-radius: 4px; }
 
         /* ============================================================
            3. HEADER
@@ -166,15 +148,13 @@
             white-space: nowrap;
         }
 
-        /* Logo mark */
         header h1::before {
             content: "";
             flex: none;
             width: 32px;
             height: 32px;
             border-radius: 10px;
-            background:
-                linear-gradient(135deg, #a5b4fc 0%, #6366f1 48%, #22d3ee 100%);
+            background: linear-gradient(135deg, #a5b4fc 0%, #6366f1 48%, #22d3ee 100%);
             box-shadow:
                 0 0 0 1px rgba(255, 255, 255, .22) inset,
                 0 8px 20px -8px rgba(99, 102, 241, .95);
@@ -234,7 +214,6 @@
             color: #fff;
             transform: translateY(-1px);
         }
-
         .user-info button:active { transform: translateY(0); }
 
         /* ============================================================
@@ -260,10 +239,8 @@
             margin-bottom: 1.5rem;
             transition: box-shadow .28s ease, border-color .28s ease;
         }
-
         .card:hover { box-shadow: var(--shadow); }
 
-        /* ---- Section headings ---- */
         h2 {
             display: flex;
             align-items: center;
@@ -325,7 +302,6 @@
         }
 
         .form-group input::placeholder { color: var(--text-subtle); }
-
         .form-group input:hover,
         .form-group select:hover { border-color: var(--border-strong); }
 
@@ -337,7 +313,6 @@
             box-shadow: 0 0 0 4px var(--ring);
         }
 
-        /* Custom select chevron */
         .form-group select {
             padding-right: 2.4rem;
             background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'/%3e%3c/svg%3e");
@@ -379,17 +354,8 @@
                 0 2px 4px rgba(15, 23, 42, .18),
                 0 16px 28px -14px var(--secondary-color);
         }
-
-        .btn:active {
-            transform: translateY(0);
-            filter: brightness(.97);
-            box-shadow: 0 1px 2px rgba(15, 23, 42, .22);
-        }
-
-        .btn:focus-visible {
-            outline: none;
-            box-shadow: 0 0 0 4px var(--ring);
-        }
+        .btn:active { transform: translateY(0); filter: brightness(.97); box-shadow: 0 1px 2px rgba(15, 23, 42, .22); }
+        .btn:focus-visible { outline: none; box-shadow: 0 0 0 4px var(--ring); }
 
         .btn-danger {
             background: linear-gradient(180deg, #f87171, var(--danger-color));
@@ -423,11 +389,7 @@
             font-size: .9rem;
         }
 
-        th, td {
-            padding: .8rem 1rem;
-            text-align: left;
-            vertical-align: middle;
-        }
+        th, td { padding: .8rem 1rem; text-align: left; vertical-align: middle; }
 
         th {
             position: sticky;
@@ -443,17 +405,11 @@
             border-bottom: 1px solid var(--border-color);
         }
 
-        td {
-            border-bottom: 1px solid var(--border-color);
-            color: var(--text-color);
-        }
-
+        td { border-bottom: 1px solid var(--border-color); color: var(--text-color); }
         tbody tr:last-child td { border-bottom: none; }
-
         tbody tr { transition: background .15s ease; }
         tbody tr:hover { background: var(--surface-alt); }
 
-        /* Empty-state helper (if app.js injects a single cell) */
         td[colspan] {
             text-align: center;
             color: var(--text-subtle);
@@ -502,7 +458,6 @@
             overflow: hidden;
         }
 
-        /* Accent ribbon on top of the login card */
         #view-login::before {
             content: "";
             position: absolute;
@@ -518,7 +473,6 @@
             margin-bottom: .4rem;
             font-size: 1.28rem;
         }
-
         #view-login h2::before { display: none; }
 
         .card-subtitle {
@@ -528,44 +482,27 @@
             margin-bottom: 1.75rem;
         }
 
-        #login-form .btn {
-            width: 100%;
-            margin-top: .5rem;
-            padding: .82rem 1.4rem;
-        }
+        #login-form .btn { width: 100%; margin-top: .5rem; padding: .82rem 1.4rem; }
 
         /* ============================================================
            11. ALERTS
+           (JS toggles inline display: block/none + className)
            ============================================================ */
         .alert {
             display: none;
-            align-items: flex-start;
-            gap: .65rem;
             padding: .85rem 1.1rem;
             border-radius: var(--radius);
             font-size: .875rem;
             font-weight: 500;
+            line-height: 1.5;
             margin-bottom: 1.25rem;
             border: 1px solid transparent;
             animation: slideDown .28s ease both;
-        }
-
-        .alert.show { display: flex; }
-
-        .alert-error {
-            background: var(--fail-bg);
-            color: var(--fail-fg);
-            border-color: rgba(239, 68, 68, .3);
-        }
-
-        .alert-success {
-            background: var(--pass-bg);
-            color: var(--pass-fg);
-            border-color: rgba(16, 185, 129, .3);
+            word-break: break-word;
         }
 
         .alert::before {
-            flex: none;
+            content: "";
             display: inline-flex;
             align-items: center;
             justify-content: center;
@@ -575,10 +512,23 @@
             font-size: .7rem;
             font-weight: 800;
             color: #fff;
-            margin-top: 1px;
+            margin-right: .55rem;
+            vertical-align: -3px;
+            flex: none;
         }
 
-        .alert-error::before   { content: "!"; background: var(--danger-color); }
+        .alert-error {
+            background: var(--fail-bg);
+            color: var(--fail-fg);
+            border-color: rgba(239, 68, 68, .3);
+        }
+        .alert-error::before { content: "!"; background: var(--danger-color); }
+
+        .alert-success {
+            background: var(--pass-bg);
+            color: var(--pass-fg);
+            border-color: rgba(16, 185, 129, .3);
+        }
         .alert-success::before { content: "✓"; background: var(--success-color); }
 
         /* ============================================================
@@ -593,7 +543,6 @@
             align-items: start;
         }
 
-        /* Divider between admin tool blocks */
         #admin-panel .grid-2 > div + div {
             border-left: 1px solid var(--border-color);
             padding-left: 1.75rem;
@@ -604,7 +553,6 @@
             font-size: .875rem;
         }
 
-        /* Student lookup bar */
         #student-search-bar {
             background: var(--surface-alt);
             border: 1px solid var(--border-color);
@@ -627,15 +575,12 @@
         }
 
         #view-login:not(.hidden) { animation: fadeUp .4s ease both; }
-
         #view-dashboard > div:not(.hidden) { animation: fadeUp .35s ease both; }
         #view-dashboard > div:not(.hidden) .card { animation: fadeUp .4s ease both; }
         #view-dashboard > div:not(.hidden) .card:nth-child(2) { animation-delay: .06s; }
 
         @media (prefers-reduced-motion: reduce) {
-            *,
-            *::before,
-            *::after {
+            *, *::before, *::after {
                 animation-duration: .001ms !important;
                 animation-iteration-count: 1 !important;
                 transition-duration: .001ms !important;
@@ -648,7 +593,6 @@
            ============================================================ */
         @media (max-width: 900px) {
             .grid-2 { grid-template-columns: 1fr; gap: 1.5rem; }
-
             #admin-panel .grid-2 > div + div {
                 border-left: none;
                 border-top: 1px solid var(--border-color);
@@ -658,42 +602,14 @@
         }
 
         @media (max-width: 720px) {
-            header {
-                padding: 0 1.1rem;
-                height: 60px;
-            }
-
-            header h1 {
-                font-size: .92rem;
-                gap: .6rem;
-            }
-
-            header h1::before {
-                width: 28px;
-                height: 28px;
-                border-radius: 9px;
-            }
-
-            #nav-user-details {
-                font-size: .78rem;
-                padding: .3rem .65rem;
-                max-width: 34vw;
-            }
-
+            header { padding: 0 1.1rem; height: 60px; }
+            header h1 { font-size: .92rem; gap: .6rem; }
+            header h1::before { width: 28px; height: 28px; border-radius: 9px; }
+            #nav-user-details { font-size: .78rem; padding: .3rem .65rem; max-width: 34vw; }
             main { padding: 1.5rem 1rem 3rem; }
-
-            .card {
-                padding: 1.25rem;
-                border-radius: 15px;
-            }
-
-            #view-login {
-                margin: 2rem auto 1rem;
-                padding: 1.75rem 1.35rem;
-            }
-
+            .card { padding: 1.25rem; border-radius: 15px; }
+            #view-login { margin: 2rem auto 1rem; padding: 1.75rem 1.35rem; }
             h2 { font-size: 1rem; }
-
             .btn { padding: .68rem 1.15rem; }
         }
 
@@ -880,6 +796,8 @@
         </div>
     </main>
 
+    <!-- Supabase client (must load before app.js) -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
     <script src="app.js" defer></script>
 </body>
 </html>
