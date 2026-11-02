@@ -1,12 +1,49 @@
 /* ============================================================
    extras.js — loaded AFTER app.js.
-   Wraps existing globals (initDashboard, loadStats, handleSaveGrade,
-   handleCreateUser, exportCSV) so app.js stays untouched.
+   Wraps existing globals so app.js stays untouched.
+   Works entirely against your Java REST API.
    ============================================================ */
 
-/* ---------------------------------------------------------
-   1. LIVE KPI CARDS
-   --------------------------------------------------------- */
+/* ------------------------------------------------------------------
+   0. Session persistence
+   ------------------------------------------------------------------ */
+const SESSION_KEY = 'sms_session_v1';
+
+/* ------------------------------------------------------------------
+   1. KPI cards
+   ------------------------------------------------------------------ */
+let __userCountsCache = null;
+let __userCountsTime  = 0;
+const USER_COUNTS_TTL = 30000; // 30s
+
+async function fetchUserCounts() {
+    const now = Date.now();
+    if (__userCountsCache && now - __userCountsTime < USER_COUNTS_TTL) {
+        return __userCountsCache;
+    }
+    try {
+        // Standard REST convention — if your backend doesn't expose
+        // GET /users, this returns null and the KPI shows "—".
+        const users = await api('/users');
+        if (!Array.isArray(users)) throw new Error('non-array');
+        const counts = {
+            students: users.filter(u => u.role === 'STUDENT').length,
+            teachers: users.filter(u => u.role === 'TEACHER').length,
+        };
+        __userCountsCache = counts;
+        __userCountsTime  = now;
+        return counts;
+    } catch {
+        return null;
+    }
+}
+
+function setKpi(id, value, suffix) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.innerHTML = esc(String(value)) + (suffix ? ` <small>${esc(suffix)}</small>` : '');
+}
+
 async function loadKPIs() {
     const row = document.getElementById('kpi-row');
     if (!row) return;
@@ -18,51 +55,52 @@ async function loadKPIs() {
     }
     row.classList.remove('hidden');
 
+    // Grade stats
     try {
-        const [usersRes, gradesRes] = await Promise.all([
-            supabaseClient.from('users').select('id, role'),
-            supabaseClient.from('grades').select('score'),
-        ]);
-        if (usersRes.error) throw usersRes.error;
-        if (gradesRes.error) throw gradesRes.error;
+        const stats = await api('/stats');
+        const totalGrades  = stats.reduce((s, x) => s + Number(x.count || 0), 0);
+        const totalScore   = stats.reduce((s, x) => s + Number(x.average || 0) * Number(x.count || 0), 0);
+        const totalPassed  = stats.reduce((s, x) => s + Number(x.passed  || 0), 0);
+        const avg = totalGrades ? totalScore / totalGrades : 0;
+        const passRate = totalGrades ? Math.round((totalPassed / totalGrades) * 100) : 0;
 
-        const users  = usersRes.data || [];
-        const grades = gradesRes.data || [];
-
-        const students = users.filter(u => u.role === 'STUDENT').length;
-        const teachers = users.filter(u => u.role === 'TEACHER').length;
-        const total    = grades.length;
-        const avg      = total
-            ? grades.reduce((sum, g) => sum + Number(g.score), 0) / total
-            : 0;
-        const passed    = grades.filter(g => Number(g.score) >= 50).length;
-        const passRate  = total ? Math.round((passed / total) * 100) : 0;
-
-        setKpi('kpi-students', students);
-        setKpi('kpi-teachers', teachers);
-        setKpi('kpi-average',  avg.toFixed(1), '/100');
+        setKpi('kpi-average', avg.toFixed(1), '/100');
         setKpi('kpi-passrate', passRate, '%');
-    } catch (err) {
-        console.error('KPI load failed:', err);
-        ['kpi-students', 'kpi-teachers', 'kpi-average', 'kpi-passrate']
-            .forEach(id => setKpi(id, '—'));
+    } catch {
+        setKpi('kpi-average', '—');
+        setKpi('kpi-passrate', '—');
+    }
+
+    // User counts (best-effort)
+    const counts = await fetchUserCounts();
+    if (counts) {
+        setKpi('kpi-students', counts.students);
+        setKpi('kpi-teachers', counts.teachers);
+    } else {
+        setKpi('kpi-students', '—');
+        setKpi('kpi-teachers', '—');
     }
 }
 
-function setKpi(id, value, suffix) {
-    const el = document.getElementById(id);
-    if (!el) return;
-    el.innerHTML = esc(value) + (suffix ? ` <small>${esc(suffix)}</small>` : '');
-}
-
-/* ---- Wrap app.js globals so KPIs stay fresh ---- */
-const __origInitDashboard  = window.initDashboard;
-const __origLoadStats      = window.loadStats;
-const __origHandleCreate   = window.handleCreateUser;
-const __origLogout         = window.logout;
+/* ------------------------------------------------------------------
+   2. Wrap app.js globals
+   ------------------------------------------------------------------ */
+const __origInitDashboard   = window.initDashboard;
+const __origLoadStats       = window.loadStats;
+const __origHandleCreate    = window.handleCreateUser;
+const __origLogout          = window.logout;
 
 window.initDashboard = function () {
     __origInitDashboard();
+    // Persist session after login succeeds (initDashboard is only
+    // called with a live token + user)
+    if (token && currentUser) {
+        try {
+            localStorage.setItem(SESSION_KEY, JSON.stringify({
+                token, user: currentUser,
+            }));
+        } catch { /* private mode / quota */ }
+    }
     loadKPIs();
 };
 
@@ -72,199 +110,164 @@ window.loadStats = async function () {
 };
 
 window.handleCreateUser = async function (e) {
-    await __origHandleCreate(e);
+    await __origHandleCreate.call(this, e);
+    __userCountsCache = null; // invalidate cache after a new user
     loadKPIs();
 };
 
 window.logout = function () {
-    closePasswordModal();
+    try { localStorage.removeItem(SESSION_KEY); } catch { /* ignore */ }
+    __userCountsCache = null;
     document.getElementById('kpi-row')?.classList.add('hidden');
+    closePasswordModal();
     __origLogout();
 };
 
-/* ---------------------------------------------------------
-   2. REAL CSV EXPORT (replaces the stub in app.js)
-   --------------------------------------------------------- */
-function csvEscape(v) {
-    const s = String(v ?? '');
-    return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-}
+/* ------------------------------------------------------------------
+   3. Restore session on page load
+   ------------------------------------------------------------------ */
+async function restoreSession() {
+    let saved;
+    try { saved = JSON.parse(localStorage.getItem(SESSION_KEY) || 'null'); }
+    catch { saved = null; }
+    if (!saved || !saved.token || !saved.user) return;
 
-window.exportCSV = async function () {
+    // Set globals (they are `let` in app.js — same global lexical scope,
+    // so assigning here updates what app.js reads).
+    token = saved.token;
+    currentUser = saved.user;
+
+    // Validate the token against a cheap endpoint
     try {
-        const { data: grades, error: gErr } = await supabaseClient
-            .from('grades').select('*');
-        if (gErr) throw gErr;
-        if (!grades || grades.length === 0) {
-            showAlert('No grade records to export.', true);
-            return;
-        }
-
-        const ids = [...new Set(grades.map(g => g.student_id))];
-        const { data: students, error: sErr } = await supabaseClient
-            .from('users').select('id, name').in('id', ids);
-        if (sErr) throw sErr;
-
-        const nameById = Object.fromEntries((students || []).map(s => [s.id, s.name]));
-
-        const rows = [['Student ID', 'Student Name', 'Subject', 'Score', 'Grade', 'Status']];
-        grades.forEach(g => rows.push([
-            g.student_id,
-            nameById[g.student_id] || '—',
-            g.subject,
-            g.score,
-            calculateGradeLetter(Number(g.score)),
-            Number(g.score) >= 50 ? 'Pass' : 'Fail',
-        ]));
-
-        const csv  = rows.map(r => r.map(csvEscape).join(',')).join('\r\n');
-        const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
-        const url  = URL.createObjectURL(blob);
-
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `grades-${new Date().toISOString().slice(0, 10)}.csv`;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        URL.revokeObjectURL(url);
-
-        await supabaseClient.from('audit_log').insert([{
-            action: 'EXPORT_CSV',
-            details: `Exported ${grades.length} grade records to CSV`,
-        }]);
-
-        showAlert(`Exported ${grades.length} grade records.`);
-    } catch (err) {
-        showAlert('Export failed: ' + err.message, true);
+        await api('/stats');
+        initDashboard();
+    } catch {
+        token = null;
+        currentUser = null;
+        try { localStorage.removeItem(SESSION_KEY); } catch { /* ignore */ }
     }
-};
-
-/* ---------------------------------------------------------
-   3. CHANGE PASSWORD MODAL
-   --------------------------------------------------------- */
-function openPasswordModal() {
-    const modal = document.getElementById('password-modal');
-    if (!modal) return;
-    modal.classList.remove('hidden');
-    document.getElementById('password-form').reset();
-    setTimeout(() => document.getElementById('pwd-current')?.focus(), 60);
 }
 
-function closePasswordModal() {
-    document.getElementById('password-modal')?.classList.add('hidden');
-}
+/* ------------------------------------------------------------------
+   4. Delete-grade support (extends handleSaveGrade)
+   ------------------------------------------------------------------ */
+const __origSaveGrade = window.handleSaveGrade;
 
-async function handleChangePassword(e) {
-    e.preventDefault();
-    if (!currentUser) return;
-
-    const current = document.getElementById('pwd-current').value;
-    const next    = document.getElementById('pwd-new').value;
-    const confirm = document.getElementById('pwd-confirm').value;
-
-    if (next !== confirm)      return showAlert('New passwords do not match.', true);
-    if (next.length < 4)       return showAlert('New password must be at least 4 characters.', true);
-    if (next === current)      return showAlert('New password must differ from current password.', true);
-
-    // Verify current password (same plain-text scheme app.js uses for login)
-    const { data: rows, error: verifyErr } = await supabaseClient
-        .from('users')
-        .select('id')
-        .eq('id', currentUser.id)
-        .eq('password', current)
-        .limit(1);
-
-    if (verifyErr) return showAlert('Verification failed: ' + verifyErr.message, true);
-    if (!rows || rows.length === 0) return showAlert('Current password is incorrect.', true);
-
-    const { error } = await supabaseClient
-        .from('users')
-        .update({ password: next })
-        .eq('id', currentUser.id);
-
-    if (error) return showAlert('Update failed: ' + error.message, true);
-
-    await supabaseClient.from('audit_log').insert([{
-        action: 'CHANGE_PASSWORD',
-        details: `User ${currentUser.name} (${currentUser.id}) changed password`,
-    }]);
-
-    closePasswordModal();
-    showAlert('Password updated successfully.');
-}
-
-/* Close modal with Escape */
-document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') closePasswordModal();
-});
-
-/* ---------------------------------------------------------
-   4. DELETE GRADE (extends handleSaveGrade)
-   --------------------------------------------------------- */
 window.handleSaveGrade = async function (e) {
+    const action = document.getElementById('grade-action').value;
+    if (action !== 'DELETE') {
+        return __origSaveGrade.call(this, e);
+    }
+
     e.preventDefault();
     const studentId = document.getElementById('grade-student-id').value.trim();
     const subject   = document.getElementById('grade-subject').value.trim();
-    const action    = document.getElementById('grade-action').value;
-    const scoreRaw  = document.getElementById('grade-score').value;
 
-    if (action === 'DELETE') {
-        if (!confirm(`Delete the grade for ${studentId} in ${subject}? This cannot be undone.`)) return;
+    if (!studentId || !subject) {
+        return showAlert('Student ID and Subject are required.', true);
+    }
+    if (!confirm(`Delete the grade for ${studentId} in ${subject}?\nThis cannot be undone.`)) return;
 
-        const { error } = await supabaseClient
-            .from('grades')
-            .delete()
-            .eq('student_id', studentId)
-            .eq('subject', subject);
-        if (error) return showAlert('Delete failed: ' + error.message, true);
-
-        await supabaseClient.from('audit_log').insert([{
-            action: 'DELETE_GRADE',
-            details: `Deleted grade for ${studentId} in ${subject}`,
-        }]);
-
+    try {
+        // Requires:  POST /api/grades/delete   body: { studentId, subject }
+        // Add this endpoint on the Java side if it does not yet exist.
+        await api('/grades/delete', { method: 'POST', body: { studentId, subject } });
         showAlert('Grade deleted.');
         document.getElementById('grade-form').reset();
         if (currentUser.role === 'TEACHER') {
             document.getElementById('grade-subject').value = currentUser.subject || '';
         }
-        loadStats();            // triggers wrapped version → KPIs refresh
+        loadStats(); // triggers wrapped version → KPIs refresh
         if (currentUser.role === 'ADMIN') loadAuditLogs();
-        return;
+    } catch (err) {
+        showAlert(err.message, true);
     }
-
-    // ADD / UPDATE path (same as original)
-    const score = parseFloat(scoreRaw);
-    const { error } = await supabaseClient
-        .from('grades')
-        .upsert({ student_id: studentId, subject, score }, { onConflict: 'student_id,subject' });
-
-    if (error) return showAlert('Error saving grade: ' + error.message, true);
-
-    showAlert('Grade saved successfully.');
-    await supabaseClient.from('audit_log').insert([{
-        action: 'SAVE_GRADE',
-        details: `Saved grade for ${studentId} in ${subject}: ${score}`,
-    }]);
-
-    loadStats();
-    if (currentUser.role === 'ADMIN') loadAuditLogs();
 };
 
-/* ---------------------------------------------------------
-   5. Toggle score input when DELETE is selected
-   --------------------------------------------------------- */
-document.addEventListener('DOMContentLoaded', () => {
-    const actionSel = document.getElementById('grade-action');
-    const scoreInput = document.getElementById('grade-score');
-    if (!actionSel || !scoreInput) return;
+/* ------------------------------------------------------------------
+   5. Change-password modal
+   ------------------------------------------------------------------ */
+function openPasswordModal() {
+    const modal = document.getElementById('password-modal');
+    if (!modal) return;
+    document.getElementById('password-form').reset();
+    modal.classList.remove('hidden');
+    document.body.classList.add('modal-open');
+    setTimeout(() => document.getElementById('pwd-current')?.focus(), 60);
+}
 
-    actionSel.addEventListener('change', () => {
-        const isDelete = actionSel.value === 'DELETE';
-        scoreInput.required = !isDelete;
-        scoreInput.disabled = isDelete;
-        if (isDelete) scoreInput.value = '';
-        scoreInput.placeholder = isDelete ? 'Not required for delete' : '';
+function closePasswordModal() {
+    document.getElementById('password-modal')?.classList.add('hidden');
+    document.body.classList.remove('modal-open');
+}
+
+async function handleChangePassword(e) {
+    e.preventDefault();
+    const current = document.getElementById('pwd-current').value;
+    const next    = document.getElementById('pwd-new').value;
+    const confirm = document.getElementById('pwd-confirm').value;
+
+    if (next !== confirm)  return showAlert('New passwords do not match.', true);
+    if (next.length < 4)   return showAlert('Password must be at least 4 characters.', true);
+    if (next === current)  return showAlert('New password must differ from current password.', true);
+
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    const orig = submitBtn.textContent;
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Updating…';
+
+    try {
+        // Requires:  POST /api/users/change-password
+        // body: { currentPassword, newPassword }
+        await api('/users/change-password', {
+            method: 'POST',
+            body: { currentPassword: current, newPassword: next },
+        });
+        closePasswordModal();
+        showAlert('Password updated successfully.');
+    } catch (err) {
+        showAlert(err.message, true);
+    } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = orig;
+    }
+}
+
+/* ------------------------------------------------------------------
+   6. Auto-refresh (60s) — data only, never disturbs forms
+   ------------------------------------------------------------------ */
+setInterval(() => {
+    if (!currentUser) return;
+    if (currentUser.role === 'ADMIN') {
+        loadStats();
+        loadAuditLogs();
+    } else if (currentUser.role === 'TEACHER') {
+        loadStats();
+    }
+}, 60000);
+
+/* ------------------------------------------------------------------
+   7. Boot
+   ------------------------------------------------------------------ */
+document.addEventListener('DOMContentLoaded', () => {
+    // Toggle score input when DELETE is selected
+    const actionSel  = document.getElementById('grade-action');
+    const scoreInput = document.getElementById('grade-score');
+    if (actionSel && scoreInput) {
+        actionSel.addEventListener('change', () => {
+            const isDelete = actionSel.value === 'DELETE';
+            scoreInput.required = !isDelete;
+            scoreInput.disabled = isDelete;
+            if (isDelete) scoreInput.value = '';
+            scoreInput.placeholder = isDelete ? 'Not required for delete' : '';
+        });
+    }
+
+    // Escape closes modal
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') closePasswordModal();
     });
+
+    // Restore a saved session (if any) after app.js is ready
+    restoreSession();
 });
