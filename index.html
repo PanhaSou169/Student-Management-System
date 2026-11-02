@@ -51,6 +51,7 @@
             background-attachment:fixed;display:flex;flex-direction:column;min-height:100vh;
             -webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;
         }
+        body.modal-open{overflow:hidden}
         ::selection{background:var(--secondary-color);color:#fff}
         ::-webkit-scrollbar{width:10px;height:10px}
         ::-webkit-scrollbar-track{background:transparent}
@@ -68,10 +69,10 @@
         header h1::before{content:"";flex:none;width:32px;height:32px;border-radius:10px;
             background:linear-gradient(135deg,#a5b4fc 0%,#6366f1 48%,#22d3ee 100%);
             box-shadow:0 0 0 1px rgba(255,255,255,.22) inset,0 8px 20px -8px rgba(99,102,241,.95)}
-        .user-info{display:flex;align-items:center;gap:.75rem;font-size:.875rem}
+        .user-info{display:flex;align-items:center;gap:.6rem;font-size:.875rem}
         #nav-user-details{display:inline-flex;align-items:center;gap:.55rem;padding:.38rem .85rem;border-radius:999px;
             background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);color:#e8eefc;
-            font-weight:500;letter-spacing:.01em;max-width:46vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+            font-weight:500;letter-spacing:.01em;max-width:40vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
         #nav-user-details::before{content:"";flex:none;width:8px;height:8px;border-radius:50%;
             background:#34d399;box-shadow:0 0 0 3px rgba(52,211,153,.22)}
         .user-info button{
@@ -110,6 +111,7 @@
         .form-group select{padding-right:2.4rem;
             background-image:url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'/%3e%3c/svg%3e");
             background-repeat:no-repeat;background-position:right .85rem center;background-size:15px;cursor:pointer}
+        .form-group input:disabled{opacity:.55;cursor:not-allowed}
 
         .btn{display:inline-flex;align-items:center;justify-content:center;gap:.5rem;font-family:inherit;
             font-size:.9rem;font-weight:600;letter-spacing:.01em;color:#fff;
@@ -122,6 +124,7 @@
             box-shadow:0 2px 4px rgba(15,23,42,.18),0 16px 28px -14px var(--secondary-color)}
         .btn:active{transform:translateY(0);filter:brightness(.97)}
         .btn:focus-visible{outline:none;box-shadow:0 0 0 4px var(--ring)}
+        .btn[disabled]{opacity:.6;cursor:not-allowed;transform:none}
         .btn-danger{background:linear-gradient(180deg,#f87171,var(--danger-color));
             box-shadow:0 1px 2px rgba(15,23,42,.18),0 10px 22px -14px var(--danger-color)}
         .btn-success{background:linear-gradient(180deg,#34d399,var(--success-color));
@@ -157,7 +160,7 @@
         .card-subtitle{text-align:center;font-size:.875rem;color:var(--text-muted);margin-bottom:1.75rem}
         #login-form .btn{width:100%;margin-top:.5rem;padding:.82rem 1.4rem}
 
-        /* ===== KPI row ===== */
+        /* KPI row */
         .kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));
             gap:1rem;margin-bottom:1.5rem;animation:fadeUp .35s ease both}
         .kpi-card{background:var(--card-bg);border:1px solid var(--border-color);border-radius:var(--radius);
@@ -166,13 +169,15 @@
         .kpi-card:hover{box-shadow:var(--shadow);transform:translateY(-1px)}
         .kpi-card::before{content:"";position:absolute;top:0;left:0;width:4px;height:100%;
             background:linear-gradient(180deg,var(--secondary-light),var(--secondary-color))}
+        .kpi-card.kpi-ok::before{background:linear-gradient(180deg,#34d399,var(--success-color))}
+        .kpi-card.kpi-warn::before{background:linear-gradient(180deg,#fbbf24,var(--warning-color))}
         .kpi-label{display:block;font-size:.7rem;font-weight:700;text-transform:uppercase;
             letter-spacing:.09em;color:var(--text-muted);margin-bottom:.35rem}
         .kpi-value{display:block;font-size:1.7rem;font-weight:700;color:var(--text-color);
             letter-spacing:-.02em;line-height:1.15}
         .kpi-value small{font-size:.85rem;font-weight:500;color:var(--text-muted);margin-left:.2rem}
 
-        /* ===== Alerts ===== */
+        /* Alerts */
         .alert{display:none;padding:.85rem 1.1rem;border-radius:var(--radius);font-size:.875rem;
             font-weight:500;line-height:1.5;margin-bottom:1.25rem;border:1px solid transparent;
             animation:slideDown .28s ease both;word-break:break-word}
@@ -184,7 +189,7 @@
         .alert-success{background:var(--pass-bg);color:var(--pass-fg);border-color:rgba(16,185,129,.3)}
         .alert-success::before{content:"✓";background:var(--success-color)}
 
-        /* ===== Modal ===== */
+        /* Modal */
         .modal-overlay{position:fixed;inset:0;z-index:100;background:rgba(15,23,42,.55);
             backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;
             padding:1.25rem;animation:fadeIn .18s ease both}
@@ -204,16 +209,13 @@
         @keyframes slideDown{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
         @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
         @keyframes fadeIn{from{opacity:0}to{opacity:1}}
-
         #view-login:not(.hidden){animation:fadeUp .4s ease both}
         #view-dashboard > div:not(.hidden){animation:fadeUp .35s ease both}
-        #view-dashboard > div:not(.hidden) .card{animation:fadeUp .4s ease both}
 
         @media (prefers-reduced-motion: reduce){
             *,*::before,*::after{animation-duration:.001ms !important;animation-iteration-count:1 !important;
                 transition-duration:.001ms !important;scroll-behavior:auto !important}
         }
-
         @media (max-width:900px){
             .grid-2{grid-template-columns:1fr;gap:1.5rem}
             #admin-panel .grid-2 > div + div{border-left:none;border-top:1px solid var(--border-color);
@@ -223,7 +225,7 @@
             header{padding:0 1.1rem;height:60px}
             header h1{font-size:.92rem;gap:.6rem}
             header h1::before{width:28px;height:28px;border-radius:9px}
-            #nav-user-details{font-size:.78rem;padding:.3rem .65rem;max-width:34vw}
+            #nav-user-details{font-size:.78rem;padding:.3rem .65rem;max-width:30vw}
             main{padding:1.5rem 1rem 3rem}
             .card{padding:1.25rem;border-radius:15px}
             #view-login{margin:2rem auto 1rem;padding:1.75rem 1.35rem}
@@ -277,23 +279,23 @@
         <!-- DASHBOARD -->
         <div id="view-dashboard" class="hidden">
 
-            <!-- KPI row (shown to ADMIN + TEACHER) -->
+            <!-- KPI row (ADMIN + TEACHER) -->
             <div id="kpi-row" class="kpi-row hidden">
                 <div class="kpi-card">
                     <span class="kpi-label">Total Students</span>
-                    <span class="kpi-value" id="kpi-students">—</span>
+                    <span class="kpi-value" id="kpi-students">…</span>
                 </div>
                 <div class="kpi-card">
                     <span class="kpi-label">Total Teachers</span>
-                    <span class="kpi-value" id="kpi-teachers">—</span>
+                    <span class="kpi-value" id="kpi-teachers">…</span>
                 </div>
-                <div class="kpi-card">
+                <div class="kpi-card kpi-ok">
                     <span class="kpi-label">Average Score</span>
-                    <span class="kpi-value" id="kpi-average">—</span>
+                    <span class="kpi-value" id="kpi-average">…</span>
                 </div>
-                <div class="kpi-card">
+                <div class="kpi-card kpi-warn">
                     <span class="kpi-label">Pass Rate</span>
-                    <span class="kpi-value" id="kpi-passrate">—</span>
+                    <span class="kpi-value" id="kpi-passrate">…</span>
                 </div>
             </div>
 
@@ -442,10 +444,7 @@
         </div>
     </div>
 
-    <!-- Supabase SDK MUST load before app.js -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
     <script src="app.js" defer></script>
-    <!-- Extras load last so they can wrap the functions app.js defines -->
     <script src="extras.js" defer></script>
 </body>
 </html>
