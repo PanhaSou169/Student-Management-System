@@ -1,209 +1,229 @@
-/* ============================================================
-   extras.js — loaded AFTER app.js.
-   Wraps only `loadStats` (called by initDashboard for ADMIN/TEACHER),
-   `handleSaveGrade` (to add DELETE), `handleCreateUser` (to refresh KPIs).
-   Never wraps initDashboard / handleLogin / logout → login can't break.
-   ============================================================ */
+const SUPABASE_URL = 'https://frotwvjkuriejaluvjvp.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZyb3R3dmprdXJpZWphbHV2anZwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTM2MzI3NjgsImV4cCI6MjEwOTIwODc2OH0.VBADQtaxalwttX3i6noXxh9l0_v1g2yvYZ_pEp_T208';
+const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-/* ---------------------------------------------------------------
-   1. KPI loader
-   --------------------------------------------------------------- */
-async function loadKPIs() {
-    const row = document.getElementById('kpi-row');
-    if (!row) return;
+let currentUser = null;
+let alertTimer = null;
 
-    // Students never see KPIs
-    if (!currentUser || currentUser.role === 'STUDENT') {
-        row.classList.add('hidden');
+function esc(v) {
+    return String(v ?? '').replace(/[&<>"']/g, c =>
+        ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+function showAlert(message, isError = false) {
+    const box = document.getElementById('alert-box');
+    if(!box) return;
+    box.textContent = message;
+    box.className = `alert ${isError ? 'alert-error' : 'alert-success'}`;
+    box.style.display = 'block';
+    clearTimeout(alertTimer);
+    alertTimer = setTimeout(() => { box.style.display = 'none'; }, 5000);
+}
+
+function calculateGradeLetter(score) {
+    if (score >= 90) return 'A';
+    if (score >= 80) return 'B';
+    if (score >= 70) return 'C';
+    if (score >= 60) return 'D';
+    if (score >= 50) return 'E';
+    return 'F';
+}
+
+function toggleSubjectInput() {
+    const role = document.getElementById('new-user-role').value;
+    document.getElementById('subject-field').classList.toggle('hidden', role !== 'TEACHER');
+}
+
+async function handleLogin(event) {
+    event.preventDefault();
+    const id = document.getElementById('login-id').value;
+    const password = document.getElementById('login-password').value;
+    
+    const { data: user, error } = await supabaseClient
+        .from('users')
+        .select('*')
+        .eq('id', id)
+        .eq('password', password)
+        .single();
+
+    if (error || !user) {
+        showAlert("Invalid ID or Password!", true);
         return;
     }
-    row.classList.remove('hidden');
-
-    // Grade aggregates — reuse the /stats endpoint
-    try {
-        const stats = await api('/stats');
-        const totalGrades = stats.reduce((s, x) => s + Number(x.count || 0), 0);
-        const totalScore  = stats.reduce((s, x) => s + Number(x.average || 0) * Number(x.count || 0), 0);
-        const totalPassed = stats.reduce((s, x) => s + Number(x.passed  || 0), 0);
-        const avg         = totalGrades ? totalScore / totalGrades : 0;
-        const passRate    = totalGrades ? Math.round((totalPassed / totalGrades) * 100) : 0;
-
-        setKpi('kpi-average',  avg.toFixed(1), '/100');
-        setKpi('kpi-passrate', passRate,       '%');
-    } catch {
-        setKpi('kpi-average',  '—');
-        setKpi('kpi-passrate', '—');
-    }
-
-    // User counts — best-effort (requires GET /api/users)
-    try {
-        const users = await api('/users');
-        if (Array.isArray(users)) {
-            setKpi('kpi-students', users.filter(u => u.role === 'STUDENT').length);
-            setKpi('kpi-teachers', users.filter(u => u.role === 'TEACHER').length);
-        } else {
-            setKpi('kpi-students', '—');
-            setKpi('kpi-teachers', '—');
-        }
-    } catch {
-        setKpi('kpi-students', '—');
-        setKpi('kpi-teachers', '—');
-    }
+    
+    currentUser = user;
+    initDashboard();
 }
 
-function setKpi(id, value, suffix) {
-    const el = document.getElementById(id);
-    if (!el) return;
-    el.innerHTML = esc(String(value)) + (suffix ? ` <small>${esc(suffix)}</small>` : '');
-}
-
-/* ---------------------------------------------------------------
-   2. Wrap loadStats → KPI refresh happens after stats are shown
-   --------------------------------------------------------------- */
-if (typeof window.loadStats === 'function') {
-    const __origLoadStats = window.loadStats;
-    window.loadStats = async function () {
-        await __origLoadStats();
-        loadKPIs();
-    };
-}
-
-/* ---------------------------------------------------------------
-   3. Wrap handleSaveGrade → add DELETE support
-   --------------------------------------------------------------- */
-if (typeof window.handleSaveGrade === 'function') {
-    const __origSaveGrade = window.handleSaveGrade;
-    window.handleSaveGrade = async function (e) {
-        const action = document.getElementById('grade-action').value;
-
-        if (action !== 'DELETE') {
-            return __origSaveGrade.call(this, e);
-        }
-
-        e.preventDefault();
-        const studentId = document.getElementById('grade-student-id').value.trim();
-        const subject   = document.getElementById('grade-subject').value.trim();
-
-        if (!studentId || !subject) {
-            showAlert('Student ID and Subject are required.', true);
-            return;
-        }
-        if (!confirm(`Delete the grade for ${studentId} in ${subject}?\nThis cannot be undone.`)) {
-            return;
-        }
-
-        try {
-            // Requires backend:  POST /api/grades/delete
-            // body: { studentId, subject }
-            await api('/grades/delete', {
-                method: 'POST',
-                body: { studentId, subject },
-            });
-            showAlert('Grade deleted.');
-            document.getElementById('grade-form').reset();
-            if (currentUser.role === 'TEACHER') {
-                document.getElementById('grade-subject').value = currentUser.subject || '';
-            }
-            loadStats();                                // triggers KPI refresh via wrapper
-            if (currentUser.role === 'ADMIN') loadAuditLogs();
-        } catch (err) {
-            showAlert(err.message, true);
-        }
-    };
-}
-
-/* ---------------------------------------------------------------
-   4. Wrap handleCreateUser → refresh KPI counts
-   --------------------------------------------------------------- */
-if (typeof window.handleCreateUser === 'function') {
-    const __origHandleCreate = window.handleCreateUser;
-    window.handleCreateUser = async function (e) {
-        await __origHandleCreate.call(this, e);
-        loadKPIs();
-    };
-}
-
-/* ---------------------------------------------------------------
-   5. Change-password modal
-   --------------------------------------------------------------- */
-function openPasswordModal() {
-    const modal = document.getElementById('password-modal');
-    if (!modal) return;
-    document.getElementById('password-form').reset();
-    modal.classList.remove('hidden');
-    document.body.classList.add('modal-open');
-    setTimeout(() => document.getElementById('pwd-current')?.focus(), 60);
-}
-
-function closePasswordModal() {
-    document.getElementById('password-modal')?.classList.add('hidden');
-    document.body.classList.remove('modal-open');
-}
-
-async function handleChangePassword(e) {
-    e.preventDefault();
-    const current = document.getElementById('pwd-current').value;
-    const next    = document.getElementById('pwd-new').value;
-    const confirm = document.getElementById('pwd-confirm').value;
-
-    if (next !== confirm) return showAlert('New passwords do not match.', true);
-    if (next.length < 4)  return showAlert('Password must be at least 4 characters.', true);
-    if (next === current) return showAlert('New password must differ from current password.', true);
-
-    const submitBtn = e.target.querySelector('button[type="submit"]');
-    const orig = submitBtn.textContent;
-    submitBtn.disabled = true;
-    submitBtn.textContent = 'Updating…';
-
-    try {
-        // Requires backend:  POST /api/users/change-password
-        // body: { currentPassword, newPassword }
-        await api('/users/change-password', {
-            method: 'POST',
-            body: { currentPassword: current, newPassword: next },
-        });
-        closePasswordModal();
-        showAlert('Password updated successfully.');
-    } catch (err) {
-        showAlert(err.message, true);
-    } finally {
-        submitBtn.disabled = false;
-        submitBtn.textContent = orig;
-    }
-}
-
-/* ---------------------------------------------------------------
-   6. Auto-refresh every 60s (never disturbs forms)
-   --------------------------------------------------------------- */
-setInterval(() => {
-    if (!currentUser) return;
-    if (currentUser.role === 'ADMIN') {
-        loadStats();
-        loadAuditLogs();
-    } else if (currentUser.role === 'TEACHER') {
-        loadStats();
-    }
-}, 60000);
-
-/* ---------------------------------------------------------------
-   7. Boot hooks
-   --------------------------------------------------------------- */
-document.addEventListener('DOMContentLoaded', () => {
-    // Toggle score input when DELETE is chosen
-    const actionSel  = document.getElementById('grade-action');
-    const scoreInput = document.getElementById('grade-score');
-    if (actionSel && scoreInput) {
-        actionSel.addEventListener('change', () => {
-            const isDelete = actionSel.value === 'DELETE';
-            scoreInput.required = !isDelete;
-            scoreInput.disabled = isDelete;
-            if (isDelete) scoreInput.value = '';
-            scoreInput.placeholder = isDelete ? 'Not required for delete' : '';
-        });
-    }
-
-    // Escape closes modal
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') closePasswordModal();
+function logout() {
+    currentUser = null;
+    ['#grades-table', '#stats-table', '#audit-table'].forEach(t => {
+        const el = document.querySelector(t + ' tbody');
+        if(el) el.innerHTML = '';
     });
-});
+    document.getElementById('view-dashboard').classList.add('hidden');
+    document.getElementById('user-nav').classList.add('hidden');
+    document.getElementById('view-login').classList.remove('hidden');
+    document.getElementById('login-form').reset();
+}
+
+function initDashboard() {
+    document.getElementById('view-login').classList.add('hidden');
+    document.getElementById('view-dashboard').classList.remove('hidden');
+    document.getElementById('nav-user-details').textContent = `${currentUser.name} (${currentUser.role})`;
+    document.getElementById('user-nav').classList.remove('hidden');
+
+    ['admin-panel', 'teacher-panel', 'student-panel'].forEach(id =>
+        document.getElementById(id).classList.add('hidden'));
+    document.getElementById('student-search-bar').classList.add('hidden');
+
+    if (currentUser.role === 'ADMIN') {
+        ['admin-panel', 'teacher-panel', 'student-panel', 'student-search-bar'].forEach(id =>
+            document.getElementById(id).classList.remove('hidden'));
+        loadAuditLogs();
+        loadStats();
+    } else if (currentUser.role === 'TEACHER') {
+        ['teacher-panel', 'student-panel', 'student-search-bar'].forEach(id =>
+            document.getElementById(id).classList.remove('hidden'));
+        document.getElementById('grade-subject').value = currentUser.subject || '';
+        loadStats();
+    } else {
+        document.getElementById('student-panel').classList.remove('hidden');
+        loadStudentGrades(currentUser.id);
+    }
+}
+
+async function handleCreateUser(e) {
+    e.preventDefault();
+    const role = document.getElementById('new-user-role').value;
+    const name = document.getElementById('new-user-name').value;
+    const subject = document.getElementById('new-user-subject').value;
+    const password = document.getElementById('new-user-password').value;
+
+    const prefix = role === 'ADMIN' ? 'A' : role === 'TEACHER' ? 'T' : 'S';
+    const newId = prefix + String(Math.floor(Math.random() * 1000)).padStart(3, '0');
+
+    const { error } = await supabaseClient
+        .from('users')
+        .insert([{ id: newId, name, role, subject, password }]);
+
+    if (error) {
+        showAlert("Error creating user: " + error.message, true);
+    } else {
+        showAlert(`${role} created. Their login ID is ${newId}`);
+        document.getElementById('create-user-form').reset();
+        toggleSubjectInput();
+        loadAuditLogs();
+    }
+}
+
+async function handleSaveGrade(e) {
+    e.preventDefault();
+    const studentId = document.getElementById('grade-student-id').value;
+    const subject = document.getElementById('grade-subject').value;
+    const score = parseFloat(document.getElementById('grade-score').value);
+    
+    const { error } = await supabaseClient
+        .from('grades')
+        .upsert({ student_id: studentId, subject: subject, score: score }, { onConflict: 'student_id,subject' });
+
+    if (error) {
+        showAlert("Error saving grade: " + error.message, true);
+    } else {
+        showAlert('Grade saved successfully');
+        loadStats();
+        if (currentUser.role === 'ADMIN') loadAuditLogs();
+    }
+}
+
+async function loadStudentGrades(targetId) {
+    const studentId = (typeof targetId === 'string' && targetId)
+        ? targetId
+        : document.getElementById('search-student-id').value.trim();
+    if (!studentId) return;
+
+    const { data: grades, error } = await supabaseClient
+        .from('grades')
+        .select('*')
+        .eq('student_id', studentId);
+
+    if (error) {
+        showAlert("Error fetching grades", true);
+        return;
+    }
+
+    const tbody = document.querySelector('#grades-table tbody');
+    if (grades.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4">No grades to show.</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = grades.map(g => {
+        const isPass = g.score >= 50;
+        return `<tr>
+            <td>${esc(g.subject)}</td>
+            <td>${esc(g.score)}</td>
+            <td><strong>${calculateGradeLetter(g.score)}</strong></td>
+            <td><span class="badge ${isPass ? 'badge-pass' : 'badge-fail'}">${isPass ? 'Pass' : 'Fail'}</span></td>
+        </tr>`;
+    }).join('');
+}
+
+async function loadStats() {
+    const { data: grades, error } = await supabaseClient.from('grades').select('*');
+    if (error) {
+        showAlert("Error loading stats", true);
+        return;
+    }
+
+    const statsMap = {};
+    grades.forEach(g => {
+        if (!statsMap[g.subject]) {
+            statsMap[g.subject] = { count: 0, totalScore: 0, passed: 0 };
+        }
+        statsMap[g.subject].count++;
+        statsMap[g.subject].totalScore += g.score;
+        if (g.score >= 50) statsMap[g.subject].passed++;
+    });
+
+    const statsArray = Object.keys(statsMap).map(subject => ({
+        subject: subject,
+        count: statsMap[subject].count,
+        average: statsMap[subject].totalScore / statsMap[subject].count,
+        passed: statsMap[subject].passed
+    }));
+
+    document.querySelector('#stats-table tbody').innerHTML = statsArray.map(s => `<tr>
+        <td>${esc(s.subject)}</td>
+        <td>${esc(s.count)}</td>
+        <td>${Number(s.average).toFixed(2)}</td>
+        <td>${esc(s.passed)}</td>
+    </tr>`).join('');
+}
+
+async function loadAuditLogs() {
+    const { data: logs, error } = await supabaseClient
+        .from('audit_log')
+        .select('*')
+        .order('id', { ascending: false })
+        .limit(20);
+
+    if (error) {
+        showAlert("Error loading logs", true);
+        return;
+    }
+
+    document.querySelector('#audit-table tbody').innerHTML = logs.map(log => `<tr>
+        <td>${esc(log.created_at)}</td>
+        <td>-</td>
+        <td>${esc(log.action)}</td>
+        <td>${esc(log.details)}</td>
+    </tr>`).join('');
+}
+
+function exportCSV() {
+    showAlert("Export CSV is not available without a backend server. Using Supabase export instead.");
+}
+function backupDB() {
+    showAlert("Backup is handled by Supabase automatically!");
+}
