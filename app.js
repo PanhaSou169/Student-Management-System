@@ -1,5 +1,6 @@
 /* ================================================================
    Student Management System — talks to ApiServer.java
+   FIXED: DOM id mismatches (#login-view, #app-view, #user-name, #toast-root)
    ================================================================ */
 const API = '/api';
 const state = { token: localStorage.getItem('sms_token'), user: null };
@@ -13,14 +14,15 @@ function esc(v) {
     ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 
+/* FIX: use the #toast-root element and .toast CSS classes that actually exist */
 function toast(msg, type = 'info') {
-  const box = $('#alert-box');
-  if (!box) return;
-  box.textContent = msg;
-  box.className = 'alert ' + (type === 'error' ? 'alert-error' : 'alert-success');
-  box.style.display = 'block';
-  clearTimeout(box._t);
-  box._t = setTimeout(() => { box.style.display = 'none'; }, 4000);
+  const root = $('#toast-root');
+  if (!root) { console.log('[toast ' + type + ']', msg); return; }
+  const el = document.createElement('div');
+  el.className = 'toast ' + (type === 'error' ? 'error' : type === 'success' ? 'success' : 'info');
+  el.textContent = msg;
+  root.appendChild(el);
+  setTimeout(() => el.remove(), 4000);
 }
 
 async function api(method, path, body) {
@@ -90,8 +92,9 @@ function logout() {
   state.token = null;
   state.user  = null;
   localStorage.removeItem('sms_token');
-  $('#view-dashboard').hidden = true;
-  $('#view-login').hidden     = false;
+  /* FIX: real IDs */
+  $('#app-view').hidden   = true;
+  $('#login-view').hidden = false;
   $('#login-form').reset();
   $('#content').innerHTML = '';
 }
@@ -99,10 +102,11 @@ $('#logout-btn').onclick = logout;
 
 /* ---------------- enter app ---------------- */
 function enterApp() {
-  $('#view-login').hidden     = true;
-  $('#view-dashboard').hidden = false;
+  /* FIX: real IDs */
+  $('#login-view').hidden = true;
+  $('#app-view').hidden   = false;
   const u = state.user || {};
-  $('#nav-user-details').textContent = u.name || 'User';
+  $('#user-name').textContent = u.name || 'User';   // was #nav-user-details
   $('#user-role').textContent = u.role || '';
   $('#user-role').className = 'badge badge-' + (u.role || 'student').toLowerCase();
   $('#user-avatar').textContent = (u.name || '?').charAt(0).toUpperCase();
@@ -751,7 +755,7 @@ views.settings = async function(el) {
         oldPassword: $('#pw-old').value,
         newPassword: $('#pw-new').value,
       });
-      toast('Password updated');
+      toast('Password updated', 'success');
       ['#pw-old', '#pw-new', '#pw-confirm'].forEach(s => $(s).value = '');
     } catch (e) { toast(e.message, 'error'); }
   };
@@ -770,5 +774,6 @@ views.settings = async function(el) {
       state.token = null;
     }
   }
-  $('#view-login').hidden = false;
+  /* FIX: real ID */
+  $('#login-view').hidden = false;
 })();
