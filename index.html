@@ -1,1064 +1,1252 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>School Management System</title>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
-
-        /* ============================================================
-           DESIGN TOKENS
-           ============================================================ */
-        :root {
-            --primary-color: #0f172a;
-            --secondary-color: #6366f1;
-            --success-color: #10b981;
-            --danger-color: #ef4444;
-            --warning-color: #f59e0b;
-            --bg-color: #f4f6fb;
-            --card-bg: #ffffff;
-            --text-color: #1e293b;
-            --border-color: #e5e9f2;
-
-            --muted: #64748b;
-            --muted-soft: #94a3b8;
-            --accent: #6366f1;
-            --accent-strong: #4f46e5;
-            --ring: rgba(99, 102, 241, 0.18);
-
-            --surface-1: #ffffff;
-            --surface-2: #f8fafc;
-            --surface-3: #f1f5f9;
-
-            --radius-xs: 8px;
-            --radius-sm: 10px;
-            --radius-md: 14px;
-            --radius-lg: 20px;
-            --radius-pill: 999px;
-
-            --shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.05);
-            --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.05),
-                         0 4px 12px rgba(15, 23, 42, 0.04);
-            --shadow-md: 0 2px 4px rgba(15, 23, 42, 0.04),
-                         0 10px 26px rgba(15, 23, 42, 0.07);
-            --shadow-lg: 0 18px 46px rgba(15, 23, 42, 0.12),
-                         0 4px 12px rgba(15, 23, 42, 0.06);
-            --shadow-xl: 0 30px 70px rgba(15, 23, 42, 0.18),
-                         0 8px 20px rgba(15, 23, 42, 0.08);
-
-            --grad-accent: linear-gradient(135deg, #6366f1 0%, #8b5cf6 55%, #a855f7 100%);
-            --grad-header: linear-gradient(115deg, #0b1220 0%, #17203a 42%, #2b2a6b 100%);
-            --grad-danger: linear-gradient(135deg, #f87171 0%, #ef4444 100%);
-            --grad-success: linear-gradient(135deg, #34d399 0%, #10b981 100%);
-
-            --ease-out: cubic-bezier(0.22, 0.85, 0.3, 1);
-            --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
-        }
-
-        /* ============================================================
-           DARK MODE
-           ============================================================ */
-        @media (prefers-color-scheme: dark) {
-            :root {
-                --primary-color: #f1f5f9;
-                --secondary-color: #818cf8;
-                --bg-color: #080b14;
-                --card-bg: #0f1422;
-                --text-color: #e2e8f0;
-                --border-color: #1e2639;
-
-                --muted: #94a3b8;
-                --muted-soft: #64748b;
-                --accent: #818cf8;
-                --accent-strong: #6366f1;
-                --ring: rgba(129, 140, 248, 0.25);
-
-                --surface-1: #0f1422;
-                --surface-2: #151b2e;
-                --surface-3: #1e2639;
-
-                --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.5);
-                --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.5),
-                             0 4px 12px rgba(0, 0, 0, 0.35);
-                --shadow-md: 0 2px 4px rgba(0, 0, 0, 0.5),
-                             0 10px 26px rgba(0, 0, 0, 0.45);
-                --shadow-lg: 0 18px 46px rgba(0, 0, 0, 0.6),
-                             0 4px 12px rgba(0, 0, 0, 0.4);
-                --shadow-xl: 0 30px 70px rgba(0, 0, 0, 0.7),
-                             0 8px 20px rgba(0, 0, 0, 0.5);
-
-                --grad-header: linear-gradient(115deg, #050810 0%, #0d1428 42%, #1e1b4b 100%);
-            }
-        }
-
-        /* ============================================================
-           RESET & BASE
-           ============================================================ */
-        *,
-        *::before,
-        *::after {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
-
-        html {
-            scroll-behavior: smooth;
-            -webkit-text-size-adjust: 100%;
-            text-size-adjust: 100%;
-        }
-
-        body {
-            font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            font-size: 15px;
-            line-height: 1.55;
-            color: var(--text-color);
-            background-color: var(--bg-color);
-            background-image:
-                radial-gradient(55rem 55rem at 108% -12%, rgba(99, 102, 241, 0.14), transparent 62%),
-                radial-gradient(45rem 45rem at -12% 4%, rgba(168, 85, 247, 0.12), transparent 58%),
-                radial-gradient(35rem 35rem at 50% 120%, rgba(59, 130, 246, 0.08), transparent 60%);
-            background-attachment: fixed;
-            background-repeat: no-repeat;
-            display: flex;
-            flex-direction: column;
-            min-height: 100vh;
-            -webkit-font-smoothing: antialiased;
-            -moz-osx-font-smoothing: grayscale;
-            font-feature-settings: "cv11", "ss01";
-            font-variant-numeric: tabular-nums;
-        }
-
-        ::selection {
-            background: rgba(99, 102, 241, 0.25);
-            color: var(--primary-color);
-        }
-
-        ::-webkit-scrollbar { width: 10px; height: 10px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb {
-            background: #cbd5e1;
-            border-radius: var(--radius-pill);
-            border: 2px solid transparent;
-            background-clip: content-box;
-            transition: background 0.2s ease;
-        }
-        ::-webkit-scrollbar-thumb:hover {
-            background: #94a3b8;
-            background-clip: content-box;
-        }
-        @media (prefers-color-scheme: dark) {
-            ::-webkit-scrollbar-thumb { background: #334155; background-clip: content-box; }
-            ::-webkit-scrollbar-thumb:hover { background: #475569; background-clip: content-box; }
-        }
-
-        /* ============================================================
-           HEADER
-           ============================================================ */
-        header {
-            position: sticky;
-            top: 0;
-            z-index: 60;
-            background: var(--grad-header);
-            color: #fff;
-            padding: 0.9rem 2rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 0.85rem;
-            box-shadow: 0 6px 26px rgba(11, 18, 32, 0.32);
-            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-        }
-
-        header::after {
-            content: "";
-            position: absolute;
-            inset: auto 0 -1px 0;
-            height: 1px;
-            background: linear-gradient(90deg,
-                transparent,
-                rgba(139, 92, 246, 0.7) 30%,
-                rgba(168, 85, 247, 0.7) 70%,
-                transparent);
-            pointer-events: none;
-        }
-
-        header h1 {
-            font-size: 1.06rem;
-            font-weight: 700;
-            letter-spacing: -0.015em;
-            display: flex;
-            align-items: center;
-            gap: 0.7rem;
-            white-space: nowrap;
-            background: linear-gradient(180deg, #ffffff 0%, rgba(226, 232, 240, 0.85) 100%);
-            -webkit-background-clip: text;
-            background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-
-        header h1::before {
-            content: "";
-            width: 34px;
-            height: 34px;
-            flex: none;
-            border-radius: 11px;
-            background-color: rgba(255, 255, 255, 0.10);
-            border: 1px solid rgba(255, 255, 255, 0.18);
-            background-image: url("data:image/svg+xml;utf8,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%20fill='none'%20stroke='%23ffffff'%20stroke-width='2'%20stroke-linecap='round'%20stroke-linejoin='round'%3E%3Cpath%20d='M22%2010%2012%205%202%2010l10%205%2010-5z'/%3E%3Cpath%20d='M6%2012v5c0%201.5%202.7%203%206%203s6-1.5%206-3v-5'/%3E%3C/svg%3E");
-            background-repeat: no-repeat;
-            background-position: center;
-            background-size: 19px 19px;
-            box-shadow: 0 6px 16px rgba(99, 102, 241, 0.35),
-                        inset 0 1px 0 rgba(255, 255, 255, 0.22);
-            backdrop-filter: blur(4px);
-            -webkit-text-fill-color: initial;
-        }
-
-        .user-info {
-            display: flex;
-            align-items: center;
-            gap: 0.85rem;
-        }
-
-        #nav-user-details {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.65rem;
-            padding: 0.3rem 0.95rem 0.3rem 0.3rem;
-            font-size: 0.84rem;
-            font-weight: 500;
-            color: rgba(255, 255, 255, 0.9);
-            letter-spacing: 0.005em;
-            background: rgba(255, 255, 255, 0.06);
-            border: 1px solid rgba(255, 255, 255, 0.12);
-            border-radius: var(--radius-pill);
-            backdrop-filter: blur(10px);
-        }
-
-        #nav-user-details::before {
-            content: "";
-            width: 26px;
-            height: 26px;
-            flex: none;
-            border-radius: 50%;
-            background-color: #6366f1;
-            background-image:
-                url("data:image/svg+xml;utf8,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%20fill='none'%20stroke='%23ffffff'%20stroke-width='2.5'%20stroke-linecap='round'%20stroke-linejoin='round'%3E%3Cpath%20d='M20%2021v-2a4%204%200%200%200-4-4H8a4%204%200%200%200-4%204v2'/%3E%3Ccircle%20cx='12'%20cy='7'%20r='4'/%3E%3C/svg%3E"),
-                linear-gradient(135deg, #818cf8, #c084fc);
-            background-repeat: no-repeat;
-            background-position: center;
-            background-size: 14px 14px, 100% 100%;
-            box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.15),
-                        0 2px 8px rgba(99, 102, 241, 0.4);
-        }
-
-        .user-info button {
-            background: rgba(255, 255, 255, 0.10);
-            color: #fff;
-            border: 1px solid rgba(255, 255, 255, 0.22);
-            padding: 0.5rem 1.1rem;
-            border-radius: var(--radius-pill);
-            font-family: inherit;
-            font-size: 0.8rem;
-            font-weight: 600;
-            letter-spacing: 0.01em;
-            cursor: pointer;
-            backdrop-filter: blur(8px);
-            transition: background-color 0.2s ease,
-                        border-color 0.2s ease,
-                        transform 0.15s var(--ease-out),
-                        box-shadow 0.2s ease;
-        }
-
-        .user-info button:hover {
-            background: rgba(239, 68, 68, 0.9);
-            border-color: rgba(248, 113, 113, 0.95);
-            transform: translateY(-1px);
-            box-shadow: 0 6px 18px rgba(239, 68, 68, 0.35);
-        }
-
-        .user-info button:active { transform: translateY(0); }
-
-        /* ============================================================
-           LAYOUT
-           ============================================================ */
-        main {
-            flex: 1;
-            width: 100%;
-            max-width: 1180px;
-            margin: 0 auto;
-            padding: 2.25rem 2rem 3.5rem;
-        }
-
-        /* ============================================================
-           CARDS
-           ============================================================ */
-        .card {
-            position: relative;
-            background: var(--card-bg);
-            border-radius: var(--radius-md);
-            padding: 1.75rem;
-            border: 1px solid var(--border-color);
-            box-shadow: var(--shadow-sm);
-            margin-bottom: 1.5rem;
-            animation: rise 0.5s var(--ease-out) both;
-            transition: box-shadow 0.25s ease,
-                        border-color 0.25s ease,
-                        transform 0.25s var(--ease-out);
-        }
-
-        .card:hover {
-            box-shadow: var(--shadow-md);
-            border-color: #dbe2ee;
-            transform: translateY(-1px);
-        }
-
-        @media (prefers-color-scheme: dark) {
-            .card:hover { border-color: #2a3450; }
-        }
-
-        /* Staggered reveal for cards inside panels */
-        #admin-panel > .card:nth-child(1),
-        #teacher-panel > .card:nth-child(1),
-        #student-panel > .card:nth-child(1) { animation-delay: 0s; }
-
-        #admin-panel > .card:nth-child(2),
-        #teacher-panel > .card:nth-child(2) { animation-delay: 0.08s; }
-
-        #admin-panel > .card:nth-child(3),
-        #teacher-panel > .card:nth-child(3) { animation-delay: 0.16s; }
-
-        /* ============================================================
-           TYPOGRAPHY
-           ============================================================ */
-        h2 {
-            font-size: 1.02rem;
-            font-weight: 700;
-            letter-spacing: -0.012em;
-            color: var(--primary-color);
-            margin-bottom: 1.35rem;
-            padding-bottom: 0.85rem;
-            border-bottom: 1px solid var(--border-color);
-            display: flex;
-            align-items: center;
-            gap: 0.65rem;
-        }
-
-        h2::before {
-            content: "";
-            width: 4px;
-            height: 18px;
-            flex: none;
-            border-radius: 4px;
-            background: var(--grad-accent);
-            box-shadow: 0 0 12px rgba(99, 102, 241, 0.45);
-        }
-
-        h3 {
-            font-size: 0.74rem;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.09em;
-            color: var(--muted);
-            margin-bottom: 1.1rem;
-        }
-
-        p { color: var(--muted); font-size: 0.9rem; }
-
-        /* ============================================================
-           FORMS
-           ============================================================ */
-        .form-group { margin-bottom: 1.1rem; }
-
-        .form-group label {
-            display: block;
-            margin-bottom: 0.45rem;
-            font-size: 0.78rem;
-            font-weight: 600;
-            letter-spacing: 0.015em;
-            color: var(--primary-color);
-        }
-
-        .form-group input,
-        .form-group select {
-            width: 100%;
-            padding: 0.7rem 0.9rem;
-            font-size: 0.925rem;
-            font-family: inherit;
-            color: var(--text-color);
-            background-color: var(--surface-2);
-            border: 1px solid var(--border-color);
-            border-radius: var(--radius-sm);
-            outline: none;
-            appearance: none;
-            -webkit-appearance: none;
-            box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.03);
-            transition: border-color 0.2s ease,
-                        box-shadow 0.2s ease,
-                        background-color 0.2s ease;
-        }
-
-        .form-group input::placeholder {
-            color: var(--muted-soft);
-            transition: color 0.2s ease;
-        }
-
-        .form-group input:hover,
-        .form-group select:hover { border-color: #cdd6e5; }
-
-        @media (prefers-color-scheme: dark) {
-            .form-group input:hover,
-            .form-group select:hover { border-color: #2a3450; }
-        }
-
-        .form-group input:focus,
-        .form-group select:focus {
-            background-color: var(--surface-1);
-            border-color: var(--accent);
-            box-shadow: 0 0 0 4px var(--ring),
-                        inset 0 1px 2px rgba(15, 23, 42, 0.03);
-        }
-
-        .form-group input:focus::placeholder { color: transparent; }
-
-        .form-group input:focus-visible,
-        .form-group select:focus-visible {
-            outline: none;
-        }
-
-        /* Autofill fix */
-        .form-group input:-webkit-autofill,
-        .form-group input:-webkit-autofill:hover,
-        .form-group input:-webkit-autofill:focus {
-            -webkit-text-fill-color: var(--text-color);
-            -webkit-box-shadow: 0 0 0 1000px var(--surface-2) inset;
-            transition: background-color 5000s ease-in-out 0s;
-        }
-
-        .form-group select {
-            cursor: pointer;
-            padding-right: 2.5rem;
-            background-image: url("data:image/svg+xml;utf8,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%20fill='none'%20stroke='%2364748b'%20stroke-width='2.5'%20stroke-linecap='round'%20stroke-linejoin='round'%3E%3Cpolyline%20points='6%209%2012%2015%2018%209'/%3E%3C/svg%3E");
-            background-repeat: no-repeat;
-            background-position: right 0.85rem center;
-            background-size: 16px 16px;
-        }
-
-        .form-group input[type="number"]::-webkit-outer-spin-button,
-        .form-group input[type="number"]::-webkit-inner-spin-button {
-            -webkit-appearance: none;
-            margin: 0;
-        }
-        .form-group input[type="number"] { -moz-appearance: textfield; }
-
-        /* ============================================================
-           BUTTONS
-           ============================================================ */
-        .btn {
-            position: relative;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 0.5rem;
-            background: var(--grad-accent);
-            color: #fff;
-            border: none;
-            padding: 0.72rem 1.4rem;
-            border-radius: var(--radius-sm);
-            font-family: inherit;
-            font-size: 0.88rem;
-            font-weight: 600;
-            letter-spacing: 0.012em;
-            cursor: pointer;
-            overflow: hidden;
-            isolation: isolate;
-            box-shadow: 0 2px 8px rgba(99, 102, 241, 0.26),
-                        inset 0 1px 0 rgba(255, 255, 255, 0.18);
-            transition: transform 0.16s var(--ease-out),
-                        box-shadow 0.22s ease,
-                        filter 0.2s ease;
-        }
-
-        /* Inner highlight */
-        .btn::after {
-            content: "";
-            position: absolute;
-            inset: 0;
-            background: linear-gradient(180deg, rgba(255, 255, 255, 0.22), transparent 55%);
-            pointer-events: none;
-            z-index: -1;
-        }
-
-        /* Shine sweep */
-        .btn::before {
-            content: "";
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg,
-                transparent,
-                rgba(255, 255, 255, 0.32),
-                transparent);
-            transition: left 0.6s var(--ease-out);
-            pointer-events: none;
-            z-index: -1;
-        }
-
-        .btn:hover {
-            filter: brightness(1.06);
-            transform: translateY(-1px);
-            box-shadow: 0 8px 22px rgba(99, 102, 241, 0.34),
-                        inset 0 1px 0 rgba(255, 255, 255, 0.22);
-        }
-
-        .btn:hover::before { left: 100%; }
-
-        .btn:active {
-            transform: translateY(0);
-            box-shadow: 0 2px 6px rgba(99, 102, 241, 0.28);
-        }
-
-        .btn:focus-visible {
-            outline: none;
-            box-shadow: 0 0 0 4px var(--ring),
-                        0 2px 8px rgba(99, 102, 241, 0.26);
-        }
-
-        .btn-danger {
-            background: var(--grad-danger);
-            box-shadow: 0 2px 8px rgba(239, 68, 68, 0.28),
-                        inset 0 1px 0 rgba(255, 255, 255, 0.18);
-        }
-        .btn-danger:hover {
-            box-shadow: 0 8px 22px rgba(239, 68, 68, 0.34),
-                        inset 0 1px 0 rgba(255, 255, 255, 0.22);
-        }
-
-        .btn-success {
-            background: var(--grad-success);
-            box-shadow: 0 2px 8px rgba(16, 185, 129, 0.28),
-                        inset 0 1px 0 rgba(255, 255, 255, 0.18);
-        }
-        .btn-success:hover {
-            box-shadow: 0 8px 22px rgba(16, 185, 129, 0.34),
-                        inset 0 1px 0 rgba(255, 255, 255, 0.22);
-        }
-
-        /* ============================================================
-           TABLES
-           ============================================================ */
-        table {
-            width: 100%;
-            border-collapse: separate;
-            border-spacing: 0;
-            margin-top: 1rem;
-            font-size: 0.895rem;
-        }
-
-        th, td {
-            padding: 0.78rem 1rem;
-            text-align: left;
-            vertical-align: middle;
-        }
-
-        th {
-            background-color: var(--surface-2);
-            color: var(--muted);
-            font-size: 0.71rem;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.075em;
-            white-space: nowrap;
-            border-bottom: 1px solid var(--border-color);
-        }
-
-        th:first-child { border-top-left-radius: var(--radius-xs); }
-        th:last-child  { border-top-right-radius: var(--radius-xs); }
-
-        td {
-            border-bottom: 1px solid var(--border-color);
-            color: var(--text-color);
-            word-break: break-word;
-            position: relative;
-            transition: background-color 0.15s ease;
-        }
-
-        tbody tr { transition: background-color 0.15s ease; }
-        tbody tr:hover td { background-color: var(--surface-2); }
-        tbody tr:last-child td { border-bottom: none; }
-
-        /* Left accent indicator on row hover */
-        tbody td:first-child::before {
-            content: "";
-            position: absolute;
-            left: 0;
-            top: 20%;
-            bottom: 20%;
-            width: 3px;
-            border-radius: 0 3px 3px 0;
-            background: var(--accent);
-            opacity: 0;
-            transform: scaleY(0.4);
-            transition: opacity 0.2s ease, transform 0.2s var(--ease-out);
-        }
-
-        tbody tr:hover td:first-child::before {
-            opacity: 1;
-            transform: scaleY(1);
-        }
-
-        /* Tabular numbers for score columns */
-        td:nth-child(2),
-        td:nth-child(3) { font-variant-numeric: tabular-nums; }
-
-        /* ============================================================
-           BADGES
-           ============================================================ */
-        .badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.42rem;
-            padding: 0.3rem 0.68rem;
-            border-radius: var(--radius-pill);
-            font-size: 0.74rem;
-            font-weight: 700;
-            letter-spacing: 0.015em;
-            line-height: 1.2;
-            white-space: nowrap;
-        }
-
-        .badge::before {
-            content: "";
-            width: 6px;
-            height: 6px;
-            border-radius: 50%;
-            background: currentColor;
-            flex: none;
-            box-shadow: 0 0 0 3px currentColor;
-            opacity: 0.25;
-        }
-
-        .badge-pass {
-            background-color: #dcfce7;
-            color: #15803d;
-            box-shadow: inset 0 0 0 1px rgba(21, 128, 61, 0.14);
-        }
-
-        .badge-fail {
-            background-color: #fee2e2;
-            color: #b91c1c;
-            box-shadow: inset 0 0 0 1px rgba(185, 28, 28, 0.14);
-        }
-
-        @media (prefers-color-scheme: dark) {
-            .badge-pass {
-                background-color: rgba(16, 185, 129, 0.15);
-                color: #34d399;
-                box-shadow: inset 0 0 0 1px rgba(16, 185, 129, 0.3);
-            }
-            .badge-fail {
-                background-color: rgba(239, 68, 68, 0.15);
-                color: #f87171;
-                box-shadow: inset 0 0 0 1px rgba(239, 68, 68, 0.3);
-            }
-        }
-
-        /* ============================================================
-           ALERTS
-           ============================================================ */
-        .alert {
-            display: none;
-            padding: 0.85rem 1rem 0.85rem 1.1rem;
-            border-radius: var(--radius-sm);
-            margin-bottom: 1.35rem;
-            font-size: 0.88rem;
-            font-weight: 500;
-            border: 1px solid transparent;
-            border-left-width: 4px;
-            animation: slideDown 0.32s var(--ease-out) both;
-        }
-
-        .alert-error {
-            background-color: #fef2f2;
-            color: #b91c1c;
-            border-color: #fecaca;
-            border-left-color: var(--danger-color);
-        }
-
-        .alert-success {
-            background-color: #f0fdf4;
-            color: #15803d;
-            border-color: #bbf7d0;
-            border-left-color: var(--success-color);
-        }
-
-        @media (prefers-color-scheme: dark) {
-            .alert-error {
-                background-color: rgba(239, 68, 68, 0.12);
-                color: #fca5a5;
-                border-color: rgba(239, 68, 68, 0.3);
-                border-left-color: var(--danger-color);
-            }
-            .alert-success {
-                background-color: rgba(16, 185, 129, 0.12);
-                color: #6ee7b7;
-                border-color: rgba(16, 185, 129, 0.3);
-                border-left-color: var(--success-color);
-            }
-        }
-
-        /* ============================================================
-           LOGIN VIEW
-           ============================================================ */
-        #auth-container {
-            max-width: 420px;
-            margin: 5rem auto;
-        }
-
-        #view-login {
-            max-width: 440px;
-            margin: 3rem auto;
-            padding: 2.4rem 2.1rem 2.15rem;
-            border-radius: var(--radius-lg);
-            box-shadow: var(--shadow-xl);
-            overflow: hidden;
-            border: 1px solid var(--border-color);
-        }
-
-        /* Top accent bar */
-        #view-login::before {
-            content: "";
-            position: absolute;
-            inset: 0 0 auto 0;
-            height: 4px;
-            background: var(--grad-accent);
-            z-index: 1;
-        }
-
-        /* Decorative orb */
-        #view-login::after {
-            content: "";
-            position: absolute;
-            top: -90px;
-            right: -80px;
-            width: 220px;
-            height: 220px;
-            border-radius: 50%;
-            background: radial-gradient(circle, rgba(139, 92, 246, 0.18), transparent 70%);
-            pointer-events: none;
-            z-index: 0;
-        }
-
-        #view-login > * { position: relative; z-index: 1; }
-
-        #view-login h2 {
-            justify-content: center;
-            border-bottom: none;
-            padding-bottom: 0;
-            margin-bottom: 1.6rem;
-            font-size: 1.24rem;
-            letter-spacing: -0.022em;
-            color: var(--primary-color);
-        }
-
-        #view-login h2::before {
-            content: "";
-            width: 30px;
-            height: 30px;
-            border-radius: 9px;
-            background-color: transparent;
-            background-image:
-                url("data:image/svg+xml;utf8,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%20fill='none'%20stroke='%23ffffff'%20stroke-width='2'%20stroke-linecap='round'%20stroke-linejoin='round'%3E%3Cpath%20d='M12%2022s8-4%208-10V5l-8-3-8%203v7c0%206%208%2010%208%2010z'/%3E%3C/svg%3E"),
-                linear-gradient(135deg, #6366f1, #a855f7);
-            background-repeat: no-repeat;
-            background-position: center;
-            background-size: 16px 16px, 100% 100%;
-            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.35);
-            border: none;
-            height: 30px;
-            flex: none;
-        }
-
-        #login-form .btn {
-            width: 100%;
-            padding: 0.85rem;
-            margin-top: 0.45rem;
-            font-size: 0.92rem;
-            letter-spacing: 0.02em;
-        }
-
-        /* ============================================================
-           PANEL HELPERS
-           ============================================================ */
-        .grid-2 {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 1.25rem 1.75rem;
-            align-items: start;
-        }
-
-        .grid-2 .form-group { margin-bottom: 0; }
-
-        #admin-panel .grid-2 > div + div {
-            border-left: 1px solid var(--border-color);
-            padding-left: 1.75rem;
-        }
-
-        #student-search-bar {
-            background: var(--surface-2);
-            border: 1px dashed var(--border-color);
-            border-radius: var(--radius-sm);
-            padding: 1rem 1.1rem 1.1rem;
-            margin-bottom: 1.25rem;
-        }
-
-        #student-search-bar label { color: var(--muted); }
-
-        .hidden { display: none !important; }
-
-        /* ============================================================
-           ANIMATIONS
-           ============================================================ */
-        @keyframes rise {
-            from { opacity: 0; transform: translateY(14px); }
-            to   { opacity: 1; transform: translateY(0); }
-        }
-
-        @keyframes slideDown {
-            from { opacity: 0; transform: translateY(-10px); }
-            to   { opacity: 1; transform: translateY(0); }
-        }
-
-        @media (prefers-reduced-motion: reduce) {
-            *, *::before, *::after {
-                animation-duration: 0.001ms !important;
-                animation-iteration-count: 1 !important;
-                transition-duration: 0.001ms !important;
-                scroll-behavior: auto !important;
-            }
-        }
-
-        /* ============================================================
-           RESPONSIVE
-           ============================================================ */
-        @media (max-width: 900px) {
-            .grid-2 { grid-template-columns: 1fr; }
-
-            #admin-panel .grid-2 > div + div {
-                border-left: none;
-                padding-left: 0;
-                border-top: 1px solid var(--border-color);
-                padding-top: 1.5rem;
-            }
-        }
-
-        @media (max-width: 640px) {
-            body { font-size: 14.5px; }
-
-            header {
-                padding: 0.8rem 1.1rem;
-            }
-
-            header h1 { font-size: 0.94rem; gap: 0.55rem; }
-            header h1::before { width: 30px; height: 30px; background-size: 17px 17px; }
-
-            #nav-user-details {
-                font-size: 0.78rem;
-                padding: 0.25rem 0.8rem 0.25rem 0.25rem;
-            }
-            #nav-user-details::before { width: 22px; height: 22px; }
-
-            main { padding: 1.5rem 1rem 2.5rem; }
-
-            .card {
-                padding: 1.25rem 1.15rem;
-                border-radius: var(--radius-sm);
-                overflow-x: auto;
-            }
-
-            h2 { font-size: 0.96rem; }
-
-            table { font-size: 0.84rem; }
-            th, td { padding: 0.65rem 0.7rem; }
-
-            #view-login {
-                margin: 1.75rem auto;
-                padding: 1.9rem 1.35rem 1.55rem;
-            }
-
-            .btn { padding: 0.68rem 1.15rem; font-size: 0.85rem; }
-        }
-
-        @media (max-width: 420px) {
-            header h1 { font-size: 0.86rem; white-space: normal; }
-            #nav-user-details { font-size: 0.74rem; }
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Student Management System</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{
+  --bg:#0f0f1e;--bg-2:#16162b;--card:#1a1a2e;--card-hover:#1f1f38;
+  --border:#2a2a4a;--border-2:#3a3a5a;--text:#e2e8f0;--text-dim:#94a3b8;--muted:#64748b;
+  --primary:#6366f1;--primary-2:#8b5cf6;--success:#10b981;--warning:#f59e0b;
+  --danger:#ef4444;--info:#38bdf8;--radius:12px;--radius-sm:8px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;
+  background:var(--bg);color:var(--text);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
+button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+input,select,textarea{font-family:inherit;font-size:14px}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--primary);outline-offset:1px}
+.hidden{display:none!important}
+.input{width:100%;background:var(--bg-2);border:1px solid var(--border);border-radius:var(--radius-sm);
+  padding:10px 14px;color:var(--text);transition:border-color .15s}
+.input:hover{border-color:var(--border-2)}
+.input:focus{outline:none;border-color:var(--primary)}
+select.input{cursor:pointer}
+textarea.input{resize:vertical;min-height:60px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:9px 16px;
+  border-radius:var(--radius-sm);font-size:13px;font-weight:600;transition:all .15s;
+  border:1px solid transparent;white-space:nowrap}
+.btn-primary{background:linear-gradient(135deg,var(--primary),var(--primary-2));color:#fff}
+.btn-primary:hover{transform:translateY(-1px);box-shadow:0 4px 16px rgba(99,102,241,.4)}
+.btn-primary:disabled{opacity:.5;cursor:not-allowed;transform:none}
+.btn-secondary{background:var(--bg-2);border-color:var(--border);color:var(--text)}
+.btn-secondary:hover{border-color:var(--border-2);background:var(--card-hover)}
+.btn-danger{background:rgba(239,68,68,.12);border-color:rgba(239,68,68,.3);color:#fca5a5}
+.btn-danger:hover{background:rgba(239,68,68,.2)}
+.btn-sm{padding:5px 10px;font-size:12px}
+.btn-block{width:100%;padding:11px 16px}
+/* login */
+#login-view{min-height:100vh;display:grid;place-items:center;padding:20px;
+  background:radial-gradient(ellipse at top,#1e1b4b 0%,#0f0f1e 60%)}
+.login-card{width:100%;max-width:400px;background:var(--card);border:1px solid var(--border);
+  border-radius:var(--radius);padding:40px 32px;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+.login-logo{text-align:center;margin-bottom:28px}
+.login-logo h1{font-size:22px;font-weight:700;
+  background:linear-gradient(135deg,var(--primary),var(--primary-2));
+  -webkit-background-clip:text;background-clip:text;color:transparent;margin-bottom:4px}
+.login-logo p{color:var(--text-dim);font-size:13px}
+.field{margin-bottom:16px}
+.field label{display:block;font-size:11px;color:var(--text-dim);margin-bottom:6px;
+  font-weight:600;text-transform:uppercase;letter-spacing:.05em}
+/* layout */
+#app-view{display:grid;grid-template-columns:240px 1fr;min-height:100vh}
+.sidebar{background:var(--bg-2);border-right:1px solid var(--border);padding:20px 0;
+  position:sticky;top:0;height:100vh;overflow-y:auto;display:flex;flex-direction:column}
+.sidebar-brand{padding:0 20px 20px;border-bottom:1px solid var(--border);margin-bottom:16px}
+.sidebar-brand h2{font-size:15px;font-weight:700;
+  background:linear-gradient(135deg,var(--primary),var(--primary-2));
+  -webkit-background-clip:text;background-clip:text;color:transparent}
+.sidebar-brand p{color:var(--muted);font-size:11px;margin-top:2px}
+.nav-group-title{padding:8px 12px;font-size:10px;font-weight:700;color:var(--muted);
+  text-transform:uppercase;letter-spacing:.1em}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 12px;margin:0 12px;
+  border-radius:var(--radius-sm);color:var(--text-dim);font-size:13px;font-weight:500;
+  cursor:pointer;transition:all .15s;width:calc(100% - 24px);text-align:left}
+.nav-item:hover{background:var(--card);color:var(--text)}
+.nav-item.active{background:rgba(99,102,241,.12);color:#a5b4fc}
+.sidebar-footer{margin-top:auto;padding:16px 0 0;border-top:1px solid var(--border)}
+.main{display:flex;flex-direction:column;overflow:hidden}
+.topbar{padding:16px 28px;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;
+  background:rgba(15,15,30,.7);backdrop-filter:blur(10px);position:sticky;top:0;z-index:10}
+.topbar h1{font-size:18px;font-weight:600}
+.user-chip{display:flex;align-items:center;gap:10px;padding:5px 12px 5px 5px;
+  background:var(--card);border:1px solid var(--border);border-radius:999px;font-size:12px}
+.avatar{width:28px;height:28px;border-radius:50%;
+  background:linear-gradient(135deg,var(--primary),var(--primary-2));
+  display:grid;place-items:center;font-size:11px;font-weight:700;color:#fff}
+.content{padding:28px;flex:1;overflow-y:auto}
+/* content pieces */
+.grid{display:grid;gap:16px}
+.grid-4{grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}
+.grid-3{grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}
+.grid-2{grid-template-columns:repeat(auto-fit,minmax(320px,1fr))}
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:20px}
+.card h3{font-size:14px;font-weight:600;margin-bottom:4px}
+.card .subtitle{color:var(--text-dim);font-size:12px}
+.stat-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);
+  padding:18px 20px;position:relative;overflow:hidden}
+.stat-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;
+  background:linear-gradient(90deg,var(--primary),var(--primary-2))}
+.stat-card .label{color:var(--text-dim);font-size:11px;text-transform:uppercase;
+  letter-spacing:.06em;font-weight:600}
+.stat-card .value{font-size:26px;font-weight:700;margin-top:6px}
+.stat-card .hint{color:var(--muted);font-size:11px;margin-top:4px}
+.toolbar{display:flex;gap:10px;align-items:center;margin-bottom:16px;flex-wrap:wrap}
+.toolbar .spacer{flex:1}
+table{width:100%;border-collapse:collapse;background:var(--card);
+  border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}
+th,td{padding:12px 14px;text-align:left;border-bottom:1px solid var(--border);font-size:13px}
+th{background:var(--bg-2);font-weight:600;color:var(--text-dim);font-size:11px;
+  text-transform:uppercase;letter-spacing:.06em}
+tr:last-child td{border-bottom:none}
+tbody tr:hover{background:rgba(99,102,241,.04)}
+.badge{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:600}
+.badge-admin{background:rgba(139,92,246,.15);color:#c4b5fd}
+.badge-teacher{background:rgba(56,189,248,.15);color:#7dd3fc}
+.badge-student{background:rgba(16,185,129,.15);color:#6ee7b7}
+.badge-a{background:rgba(16,185,129,.15);color:#6ee7b7}
+.badge-b{background:rgba(56,189,248,.15);color:#7dd3fc}
+.badge-c{background:rgba(245,158,11,.15);color:#fcd34d}
+.badge-d{background:rgba(251,146,60,.15);color:#fdba74}
+.badge-e{background:rgba(239,68,68,.15);color:#fca5a5}
+.badge-f{background:rgba(239,68,68,.25);color:#fca5a5}
+.badge-pass{background:rgba(16,185,129,.15);color:#6ee7b7}
+.badge-fail{background:rgba(239,68,68,.15);color:#fca5a5}
+.empty{text-align:center;color:var(--muted);padding:40px 20px;font-size:13px}
+.rank-badge{display:inline-flex;align-items:center;justify-content:center;
+  min-width:28px;height:28px;padding:0 8px;border-radius:6px;
+  background:var(--bg-2);border:1px solid var(--border);font-weight:700;font-size:12px}
+.rank-badge.gold{background:linear-gradient(135deg,#fbbf24,#f59e0b);color:#451a03;border:none}
+.rank-badge.silver{background:linear-gradient(135deg,#cbd5e1,#94a3b8);color:#1e293b;border:none}
+.rank-badge.bronze{background:linear-gradient(135deg,#fbbf24,#d97706);color:#451a03;border:none}
+.bar-wrap{background:var(--bg-2);border-radius:999px;height:6px;overflow:hidden;margin-top:6px}
+.bar{height:100%;border-radius:999px;background:linear-gradient(90deg,var(--primary),var(--primary-2))}
+.row-actions{display:flex;gap:6px;justify-content:flex-end}
+.transcript{font-family:'JetBrains Mono','Fira Code',ui-monospace,monospace;
+  background:var(--bg-2);border:1px solid var(--border);border-radius:var(--radius-sm);
+  padding:16px;font-size:12px;white-space:pre;overflow-x:auto;line-height:1.7}
+[data-card]{transition:all .15s;cursor:pointer}
+[data-card]:hover{border-color:var(--border-2);transform:translateY(-2px);background:var(--card-hover)}
+/* modal */
+#modal-root{position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(4px);
+  display:none;place-items:center;z-index:100;padding:20px}
+#modal-root.show{display:grid}
+.modal{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);
+  width:100%;max-width:560px;padding:24px;box-shadow:0 20px 60px rgba(0,0,0,.5);
+  max-height:90vh;overflow-y:auto}
+.modal h2{font-size:16px;margin-bottom:4px}
+.modal .subtitle{color:var(--text-dim);font-size:12px;margin-bottom:20px}
+.modal-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:20px}
+/* toast */
+#toast-root{position:fixed;bottom:24px;right:24px;display:flex;flex-direction:column;
+  gap:8px;z-index:200}
+.toast{padding:12px 18px;border-radius:var(--radius-sm);background:var(--card);
+  border:1px solid var(--border);box-shadow:0 4px 20px rgba(0,0,0,.35);
+  font-size:13px;animation:slideIn .25s ease;min-width:240px;max-width:400px}
+.toast.success{border-left:3px solid var(--success)}
+.toast.error{border-left:3px solid var(--danger)}
+.toast.info{border-left:3px solid var(--info)}
+@keyframes slideIn{from{transform:translateX(20px);opacity:0}to{transform:none;opacity:1}}
+@media(max-width:800px){
+  #app-view{grid-template-columns:1fr}
+  .sidebar{display:none}
+  .content{padding:16px}
+  .topbar{padding:12px 16px}
+}
+</style>
 </head>
 <body>
 
-    <header>
-        <h1>School Management Portal</h1>
-        <div id="user-nav" class="user-info hidden">
-            <span id="nav-user-details"></span>
-            <button onclick="logout()">Logout</button>
-        </div>
+<!-- ====================== LOGIN ====================== -->
+<div id="login-view">
+  <form class="login-card" id="login-form" autocomplete="on">
+    <div class="login-logo">
+      <h1>🎓 Student Management</h1>
+      <p>Sign in to continue</p>
+    </div>
+    <div class="field">
+      <label>User ID</label>
+      <input class="input" id="login-id" required placeholder="A001">
+    </div>
+    <div class="field">
+      <label>Password</label>
+      <input class="input" type="password" id="login-password" required placeholder="••••••••">
+    </div>
+    <button class="btn btn-primary btn-block" type="submit" id="login-btn">Sign in</button>
+  </form>
+</div>
+
+<!-- ====================== APP ====================== -->
+<div id="app-view" hidden>
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <h2>🎓 Student Management</h2>
+      <p id="brand-sub">Dashboard</p>
+    </div>
+    <nav id="nav"></nav>
+    <div class="sidebar-footer">
+      <button class="nav-item" id="logout-btn">
+        <span style="font-size:16px;width:18px;text-align:center">↪</span> Sign out
+      </button>
+    </div>
+  </aside>
+  <main class="main">
+    <header class="topbar">
+      <h1 id="page-title">Dashboard</h1>
+      <div class="user-chip">
+        <div class="avatar" id="user-avatar">?</div>
+        <span id="user-name">—</span>
+        <span class="badge" id="user-role">—</span>
+      </div>
     </header>
+    <div class="content" id="content"></div>
+  </main>
+</div>
 
-    <main>
-        <div id="alert-box" class="alert"></div>
+<div id="modal-root"><div class="modal" id="modal-content"></div></div>
+<div id="toast-root"></div>
 
-        <div id="view-login" class="card">
-            <h2>System Login</h2>
-            <form id="login-form" onsubmit="handleLogin(event)">
-                <div class="form-group">
-                    <label for="login-id">User ID (e.g., A001, T001, S001)</label>
-                    <input type="text" id="login-id" required>
-                </div>
-                <div class="form-group">
-                    <label for="login-password">Password</label>
-                    <input type="password" id="login-password" required>
-                </div>
-                <button type="submit" class="btn">Log In</button>
-            </form>
+<script>
+/* ================================================================
+   1. Supabase
+   ================================================================ */
+const SUPABASE_URL = 'https://frotwvjkuriejaluvjvp.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZyb3R3dmprdXJpZWphbHV2anZwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTM2MzI3NjgsImV4cCI6MjEwOTIwODc2OH0.VBADQtaxalwttX3i6noXxh9l0_v1g2yvYZ_pEp_T208';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+/* ================================================================
+   2. State + helpers
+   ================================================================ */
+let currentUser = null;
+let currentView = 'dashboard';
+const cache = { users: null, subjects: null, components: null };
+
+const PASS_MARK = 50;
+const HONOR_ROLL_MIN = 85;
+
+const $ = s => document.querySelector(s);
+const $$ = s => document.querySelectorAll(s);
+
+function esc(v) {
+  return String(v ?? '').replace(/[&<>"']/g, c =>
+    ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function toast(msg, type = 'info') {
+  const el = document.createElement('div');
+  el.className = 'toast ' + type;
+  el.textContent = msg;
+  $('#toast-root').append(el);
+  setTimeout(() => {
+    el.style.transition = 'opacity .3s,transform .3s';
+    el.style.opacity = '0'; el.style.transform = 'translateX(20px)';
+    setTimeout(() => el.remove(), 300);
+  }, 3200);
+}
+
+function openModal(html, actions) {
+  $('#modal-content').innerHTML = html + '<div class="modal-actions" id="modal-actions"></div>';
+  const bar = $('#modal-actions');
+  for (const a of actions) {
+    const b = document.createElement('button');
+    b.className = 'btn ' + (a.primary ? 'btn-primary' : a.danger ? 'btn-danger' : 'btn-secondary');
+    b.textContent = a.label;
+    b.onclick = a.onClick;
+    bar.append(b);
+  }
+  const root = $('#modal-root');
+  root.classList.add('show');
+  root.onclick = e => { if (e.target === root) closeModal(); };
+}
+function closeModal() { $('#modal-root').classList.remove('show'); }
+
+function cacheClear() { cache.users = cache.subjects = cache.components = null; }
+
+/* ================================================================
+   3. Grade rules
+   ================================================================ */
+function letter(score) {
+  if (score >= 90) return 'A';
+  if (score >= 80) return 'B';
+  if (score >= 70) return 'C';
+  if (score >= 60) return 'D';
+  if (score >= PASS_MARK) return 'E';
+  return 'F';
+}
+function isPass(score) { return score >= PASS_MARK; }
+function gpaPoints(l) {
+  return { A: 4.0, B: 3.0, C: 2.0, D: 1.0, E: 0.5, F: 0.0 }[l] || 0;
+}
+function weightedAvg(components) {
+  let w = 0, total = 0;
+  for (const c of components) { total += Number(c.score) * Number(c.weight); w += Number(c.weight); }
+  return w === 0 ? 0 : total / w;
+}
+function creditGpa(grades) {
+  let c = 0, p = 0;
+  for (const g of grades) { c += Number(g.credits); p += g.gpaPoints * Number(g.credits); }
+  return c === 0 ? 0 : p / c;
+}
+
+/* ================================================================
+   4. Data loaders (with tiny cache)
+   ================================================================ */
+async function loadUsers() {
+  if (cache.users) return cache.users;
+  const { data, error } = await sb.from('users').select('*').order('id');
+  if (error) throw error;
+  return (cache.users = data);
+}
+async function loadSubjects() {
+  if (cache.subjects) return cache.subjects;
+  const { data, error } = await sb.from('subjects').select('*').order('name');
+  if (error) throw error;
+  return (cache.subjects = data);
+}
+async function loadAllComponents() {
+  if (cache.components) return cache.components;
+  const { data, error } = await sb.from('grade_components')
+    .select('*').order('student_id').order('subject').order('component_name');
+  if (error) throw error;
+  return (cache.components = data);
+}
+async function loadComponentsFor(studentId) {
+  const { data, error } = await sb.from('grade_components')
+    .select('*').eq('student_id', studentId)
+    .order('subject').order('component_name');
+  if (error) throw error;
+  return data;
+}
+
+/** Returns aggregated SubjectGrade[] for one student. */
+async function computeSubjectGrades(studentId) {
+  const [comps, subjects] = await Promise.all([
+    loadComponentsFor(studentId),
+    loadSubjects(),
+  ]);
+  const bySubject = {};
+  for (const c of comps) (bySubject[c.subject] ||= []).push(c);
+  const creditsOf = name => {
+    const s = subjects.find(x => x.name === name);
+    return s ? Number(s.credits) : 1;
+  };
+  return Object.entries(bySubject).map(([subject, list]) => {
+    const score = weightedAvg(list);
+    const l = letter(score);
+    return {
+      subject, score, letter: l,
+      result: isPass(score) ? 'Pass' : 'Fail',
+      credits: creditsOf(subject),
+      gpaPoints: gpaPoints(l),
+      componentCount: list.length,
+      components: list,
+    };
+  }).sort((a, b) => a.subject.localeCompare(b.subject));
+}
+
+/** Full leaderboard across all students. viewer filters by subject for teachers. */
+async function computeLeaderboard(viewer) {
+  const users = await loadUsers();
+  const students = users.filter(u => u.role === 'STUDENT');
+  const rows = [];
+  for (const s of students) {
+    const grades = await computeSubjectGrades(s.id);
+    const visible = viewer && viewer.role === 'TEACHER'
+      ? grades.filter(g => g.subject.toLowerCase() === (viewer.subject || '').toLowerCase())
+      : grades;
+    if (visible.length === 0) continue;
+    const avg = visible.reduce((a, g) => a + g.score, 0) / visible.length;
+    const gpa = creditGpa(visible);
+    rows.push({
+      studentId: s.id, name: s.name,
+      average: avg, gpa, subjectCount: visible.length,
+    });
+  }
+  rows.sort((a, b) => b.average - a.average || a.name.localeCompare(b.name));
+  let rank = 0; let prevAvg = NaN;
+  return rows.map((r, i) => {
+    if (i === 0 || r.average !== prevAvg) rank = i + 1;
+    prevAvg = r.average;
+    return { rank, ...r };
+  });
+}
+
+/* ================================================================
+   5. Audit logging
+   ================================================================ */
+async function log(action, details) {
+  try {
+    await sb.from('audit_log').insert([{
+      actor: currentUser ? currentUser.id : '-',
+      action, details,
+    }]);
+  } catch (e) { console.warn('Audit log failed:', e); }
+}
+
+/* ================================================================
+   6. Login / logout
+   ================================================================ */
+$('#login-form').onsubmit = async e => {
+  e.preventDefault();
+  const btn = $('#login-btn');
+  btn.disabled = true; btn.textContent = 'Signing in…';
+  try {
+    const id = $('#login-id').value.trim();
+    const password = $('#login-password').value;
+    const { data, error } = await sb.from('users').select('*')
+      .eq('id', id).eq('password', password).single();
+    if (error || !data) throw new Error('Invalid ID or password');
+    currentUser = data;
+    enterApp();
+  } catch (err) {
+    toast(err.message || 'Login failed', 'error');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Sign in';
+  }
+};
+
+function logout() {
+  currentUser = null;
+  cacheClear();
+  $('#app-view').hidden = true;
+  $('#login-view').hidden = false;
+  $('#login-form').reset();
+}
+$('#logout-btn').onclick = logout;
+
+/* ================================================================
+   7. Navigation
+   ================================================================ */
+function navFor(role) {
+  if (role === 'ADMIN') return [
+    { id:'dashboard', icon:'◉', label:'Dashboard' },
+    { group:'Users' },
+    { id:'users', icon:'👥', label:'Users' },
+    { id:'subjects', icon:'📚', label:'Subjects' },
+    { group:'Grades' },
+    { id:'students', icon:'🎒', label:'Students' },
+    { id:'leaderboard', icon:'🏆', label:'Leaderboard' },
+    { id:'honor-roll', icon:'⭐', label:'Honor Roll' },
+    { id:'failing', icon:'⚠', label:'Failing' },
+    { id:'stats', icon:'📊', label:'Class Stats' },
+    { group:'Admin' },
+    { id:'audit', icon:'📋', label:'Audit Log' },
+    { id:'settings', icon:'⚙', label:'Settings' },
+  ];
+  if (role === 'TEACHER') return [
+    { id:'dashboard', icon:'◉', label:'Dashboard' },
+    { id:'students', icon:'🎒', label:'Students' },
+    { id:'leaderboard', icon:'🏆', label:'Leaderboard' },
+    { id:'stats', icon:'📊', label:'Class Stats' },
+    { id:'settings', icon:'⚙', label:'Settings' },
+  ];
+  return [
+    { id:'dashboard', icon:'◉', label:'Dashboard' },
+    { id:'my-grades', icon:'📝', label:'My Grades' },
+    { id:'top', icon:'🏆', label:'Top 5' },
+    { id:'settings', icon:'⚙', label:'Settings' },
+  ];
+}
+
+function renderNav() {
+  const nav = $('#nav');
+  nav.innerHTML = '';
+  for (const item of navFor(currentUser.role)) {
+    if (item.group) {
+      const t = document.createElement('div');
+      t.className = 'nav-group-title'; t.textContent = item.group;
+      nav.append(t); continue;
+    }
+    const b = document.createElement('button');
+    b.className = 'nav-item';
+    b.dataset.view = item.id;
+    b.innerHTML = `<span style="font-size:16px;width:18px;text-align:center">${item.icon}</span><span>${item.label}</span>`;
+    b.onclick = () => { currentView = item.id; render(); };
+    nav.append(b);
+  }
+}
+
+function enterApp() {
+  $('#login-view').hidden = true;
+  $('#app-view').hidden = false;
+  $('#user-name').textContent = currentUser.name;
+  $('#user-role').textContent = currentUser.role;
+  $('#user-role').className = 'badge badge-' + currentUser.role.toLowerCase();
+  $('#user-avatar').textContent = (currentUser.name || '?').charAt(0).toUpperCase();
+  renderNav();
+  currentView = 'dashboard';
+  render();
+}
+
+/* ================================================================
+   8. Render dispatcher
+   ================================================================ */
+async function render() {
+  const el = $('#content');
+  el.innerHTML = '<div class="empty">Loading…</div>';
+  const item = navFor(currentUser.role).find(n => n.id === currentView) || { label:'Dashboard' };
+  $('#page-title').textContent = item.label;
+  $('#brand-sub').textContent = item.label;
+  $$('.nav-item[data-view]').forEach(n => n.classList.toggle('active', n.dataset.view === currentView));
+  try {
+    if (views[currentView]) await views[currentView](el);
+    else el.innerHTML = '<div class="empty">Unknown view.</div>';
+  } catch (err) {
+    el.innerHTML = `<div class="empty">⚠ ${esc(err.message)}</div>`;
+  }
+}
+
+/* ================================================================
+   9. Shared table helpers
+   ================================================================ */
+function leaderTable(rows) {
+  if (!rows.length) return '<div class="empty">No data.</div>';
+  return `<table>
+    <thead><tr><th>#</th><th>Student</th><th>Average</th><th>GPA</th><th>Subjects</th></tr></thead>
+    <tbody>${rows.map(r => {
+      const c = r.rank === 1 ? 'gold' : r.rank === 2 ? 'silver' : r.rank === 3 ? 'bronze' : '';
+      return `<tr>
+        <td><span class="rank-badge ${c}">${r.rank}</span></td>
+        <td><strong>${esc(r.name)}</strong><br><span class="subtitle">${esc(r.studentId)}</span></td>
+        <td>${r.average.toFixed(2)}</td>
+        <td>${r.gpa.toFixed(2)}</td>
+        <td>${r.subjectCount}</td>
+      </tr>`;
+    }).join('')}</tbody>
+  </table>`;
+}
+
+function subjectGradeTable(grades) {
+  if (!grades.length) return '<div class="empty">No grades.</div>';
+  return `<table>
+    <thead><tr><th>Subject</th><th>Score</th><th>Letter</th><th>Credits</th><th>Result</th></tr></thead>
+    <tbody>${grades.map(g => `
+      <tr>
+        <td><strong>${esc(g.subject)}</strong></td>
+        <td>${g.score.toFixed(1)}</td>
+        <td><span class="badge badge-${g.letter.toLowerCase()}">${g.letter}</span></td>
+        <td>${g.credits}</td>
+        <td><span class="badge badge-${g.result.toLowerCase()}">${g.result}</span></td>
+      </tr>`).join('')}</tbody>
+  </table>`;
+}
+
+function componentTable(comps, interactive = false, onEdit, onDelete) {
+  if (!comps.length) return '<div class="empty">No components.</div>';
+  return `<table>
+    <thead><tr><th>Subject</th><th>Component</th><th>Score</th><th>Weight</th>
+      <th>By</th>${interactive ? '<th></th>' : ''}</tr></thead>
+    <tbody>${comps.map(c => `
+      <tr>
+        <td>${esc(c.subject)}</td>
+        <td>${esc(c.component_name)}</td>
+        <td>${Number(c.score).toFixed(1)}</td>
+        <td>${Number(c.weight).toFixed(1)}</td>
+        <td>${esc(c.graded_by || '—')}</td>
+        ${interactive ? `<td>
+          <div class="row-actions">
+            <button class="btn btn-secondary btn-sm" data-edit="${esc(c.id)}">Edit</button>
+            <button class="btn btn-danger btn-sm" data-del="${esc(c.id)}">Del</button>
+          </div>
+        </td>` : ''}
+      </tr>`).join('')}</tbody>
+  </table>`;
+}
+
+function statCard(label, value, hint) {
+  return `<div class="stat-card">
+    <div class="label">${esc(label)}</div>
+    <div class="value">${esc(String(value))}</div>
+    ${hint ? `<div class="hint">${esc(hint)}</div>` : ''}
+  </div>`;
+}
+
+function statsTable(stats) {
+  if (!stats.length) return '<div class="empty">No data.</div>';
+  return `<table>
+    <thead><tr><th>Subject</th><th>N</th><th>Avg</th><th>Median</th>
+      <th>Std</th><th>Min</th><th>Max</th><th>Pass%</th></tr></thead>
+    <tbody>${stats.map(s => {
+      const c = s.passRate >= 80 ? 'linear-gradient(90deg,#10b981,#34d399)'
+              : s.passRate >= 50 ? 'linear-gradient(90deg,#f59e0b,#fbbf24)'
+              : 'linear-gradient(90deg,#ef4444,#f87171)';
+      return `<tr>
+        <td><strong>${esc(s.subject)}</strong></td>
+        <td>${s.count}</td>
+        <td>${s.average.toFixed(2)}</td>
+        <td>${s.median.toFixed(2)}</td>
+        <td>${s.stdDev.toFixed(2)}</td>
+        <td>${s.min.toFixed(1)}</td>
+        <td>${s.max.toFixed(1)}</td>
+        <td>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span>${s.passRate.toFixed(1)}%</span>
+            <div class="bar-wrap" style="flex:1;min-width:60px">
+              <div class="bar" style="width:${s.passRate}%;background:${c}"></div>
+            </div>
+          </div>
+        </td>
+      </tr>`;
+    }).join('')}</tbody>
+  </table>`;
+}
+
+/* ================================================================
+   10. Views
+   ================================================================ */
+const views = {};
+
+/* -------- Dashboard -------- */
+views.dashboard = async function(el) {
+  const me = currentUser;
+
+  if (me.role === 'ADMIN') {
+    const [users, subjects, leader] = await Promise.all([
+      loadUsers(), loadSubjects(), computeLeaderboard(),
+    ]);
+    const comps = await loadAllComponents();
+    el.innerHTML = `
+      <div class="grid grid-4">
+        ${statCard('Students', users.filter(u => u.role === 'STUDENT').length, 'registered')}
+        ${statCard('Teachers', users.filter(u => u.role === 'TEACHER').length, 'staff')}
+        ${statCard('Subjects', subjects.length, 'in catalog')}
+        ${statCard('Components', comps.length, 'grade entries')}
+      </div>
+      <div class="grid grid-2" style="margin-top:16px">
+        <div class="card">
+          <h3>🏆 Top 5 students</h3>
+          <p class="subtitle">By weighted average</p>
+          <div style="margin-top:12px">${leaderTable(leader.slice(0, 5))}</div>
         </div>
-
-        <div id="view-dashboard" class="hidden">
-            
-            <div id="admin-panel" class="hidden">
-                <div class="card">
-                    <h2>Admin Controls</h2>
-                    <div class="grid-2">
-                        <div>
-                            <h3>Create User Account</h3>
-                            <form id="create-user-form" onsubmit="handleCreateUser(event)">
-                                <div class="form-group">
-                                    <label>Role</label>
-                                    <select id="new-user-role" onchange="toggleSubjectInput()">
-                                        <option value="STUDENT">Student</option>
-                                        <option value="TEACHER">Teacher</option>
-                                        <option value="ADMIN">Admin</option>
-                                    </select>
-                                </div>
-                                <div class="form-group">
-                                    <label>Full Name</label>
-                                    <input type="text" id="new-user-name" required>
-                                </div>
-                                <div class="form-group hidden" id="subject-field">
-                                    <label>Teaching Subject</label>
-                                    <input type="text" id="new-user-subject">
-                                </div>
-                                <div class="form-group">
-                                    <label>Initial Password</label>
-                                    <input type="password" id="new-user-password" required>
-                                </div>
-                                <button type="submit" class="btn btn-success">Create User</button>
-                            </form>
-                        </div>
-                        <div>
-                            <h3>Data &amp; System Tools</h3>
-                            <p style="margin-bottom: 1rem;">Export or generate system recovery files.</p>
-                            <button class="btn" onclick="exportCSV()">Export Grades (CSV)</button>
-                            <button class="btn" onclick="backupDB()" style="margin-top: 0.5rem;">Backup Database (SQL)</button>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="card">
-                    <h2>System Audit Trail</h2>
-                    <table id="audit-table">
-                        <thead>
-                            <tr>
-                                <th>Timestamp</th>
-                                <th>Actor</th>
-                                <th>Action</th>
-                                <th>Details</th>
-                            </tr>
-                        </thead>
-                        <tbody></tbody>
-                    </table>
-                </div>
-            </div>
-
-            <div id="teacher-panel" class="hidden">
-                <div class="card">
-                    <h2>Manage Grades</h2>
-                    <form id="grade-form" onsubmit="handleSaveGrade(event)">
-                        <div class="grid-2">
-                            <div class="form-group">
-                                <label>Student ID</label>
-                                <input type="text" id="grade-student-id" placeholder="e.g., S001" required>
-                            </div>
-                            <div class="form-group">
-                                <label>Subject</label>
-                                <input type="text" id="grade-subject" required>
-                            </div>
-                            <div class="form-group">
-                                <label>Score (0 - 100)</label>
-                                <input type="number" id="grade-score" min="0" max="100" step="0.1" required>
-                            </div>
-                            <div class="form-group">
-                                <label>Action</label>
-                                <select id="grade-action">
-                                    <option value="ADD">Add Grade</option>
-                                    <option value="UPDATE">Update Grade</option>
-                                </select>
-                            </div>
-                        </div>
-                        <button type="submit" class="btn btn-success">Save Grade Record</button>
-                    </form>
-                </div>
-
-                <div class="card">
-                    <h2>Class Analytics</h2>
-                    <table id="stats-table">
-                        <thead>
-                            <tr>
-                                <th>Subject</th>
-                                <th>Enrolled Students</th>
-                                <th>Average Score</th>
-                                <th>Passed Students</th>
-                            </tr>
-                        </thead>
-                        <tbody></tbody>
-                    </table>
-                </div>
-            </div>
-
-            <div id="student-panel" class="hidden">
-                <div class="card">
-                    <h2>Academic Grades Overview</h2>
-                    <div id="student-search-bar" class="form-group hidden">
-                        <label>Lookup Student ID</label>
-                        <input type="text" id="search-student-id" placeholder="Enter Student ID to fetch report">
-                        <button class="btn" onclick="loadStudentGrades()" style="margin-top: 0.5rem;">Search Grades</button>
-                    </div>
-                    <table id="grades-table">
-                        <thead>
-                            <tr>
-                                <th>Subject</th>
-                                <th>Score</th>
-                                <th>Grade Letter</th>
-                                <th>Status</th>
-                            </tr>
-                        </thead>
-                        <tbody></tbody>
-                    </table>
-                </div>
-            </div>
-
+        <div class="card">
+          <h3>📊 Class statistics</h3>
+          <p class="subtitle">Per subject</p>
+          <div style="margin-top:12px">${statsTable(await computeStats(null))}</div>
         </div>
-    </main>
+      </div>`;
+  } else if (me.role === 'TEACHER') {
+    const [users, leader] = await Promise.all([loadUsers(), computeLeaderboard(me)]);
+    const stats = await computeStats(me);
+    const mine = stats[0];
+    el.innerHTML = `
+      <div class="grid grid-4">
+        ${statCard('My subject', me.subject || '—', 'assigned')}
+        ${statCard('My students', users.filter(u => u.role === 'STUDENT').length, 'in class')}
+        ${statCard('Class average', mine ? mine.average.toFixed(1) : '—',
+                   mine ? `${mine.count} grades` : 'no data')}
+        ${statCard('Pass rate', mine ? mine.passRate.toFixed(1) + '%' : '—', 'weighted')}
+      </div>
+      <div class="card" style="margin-top:16px">
+        <h3>📊 ${esc(me.subject || 'Subject')} statistics</h3>
+        <div style="margin-top:12px">${statsTable(stats)}</div>
+      </div>`;
+  } else {
+    const [grades, leader] = await Promise.all([
+      computeSubjectGrades(me.id), computeLeaderboard(),
+    ]);
+    const myRank = leader.find(r => r.studentId === me.id);
+    const avg = grades.length
+      ? grades.reduce((a, g) => a + g.score, 0) / grades.length
+      : 0;
+    const gpa = creditGpa(grades);
+    el.innerHTML = `
+      <div class="grid grid-4">
+        ${statCard('My GPA', gpa.toFixed(2), 'credit-weighted')}
+        ${statCard('Average', avg.toFixed(1), `${grades.length} subjects`)}
+        ${statCard('My rank', myRank ? '#' + myRank.rank : '—',
+                   myRank ? 'of the class' : 'no grades yet')}
+        ${statCard('Subjects', grades.length, 'enrolled')}
+      </div>
+      <div class="grid grid-2" style="margin-top:16px">
+        <div class="card">
+          <h3>📝 My subjects</h3>
+          <div style="margin-top:12px">${subjectGradeTable(grades)}</div>
+        </div>
+        <div class="card">
+          <h3>🏆 Class top 5</h3>
+          <div style="margin-top:12px">${leaderTable(leader.slice(0, 5))}</div>
+        </div>
+      </div>`;
+  }
+};
 
-    <!-- បន្ថែម Script របស់ Supabase នៅទីនេះ -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    
-    <!-- បន្ទាប់មកទើបហៅ app.js របស់អ្នក -->
-    <script src="app.js" defer></script>
+/* -------- Users (admin) -------- */
+views.users = async function(el) {
+  const users = await loadUsers();
+  el.innerHTML = `
+    <div class="toolbar">
+      <input class="input" id="user-search" placeholder="Search by ID or name…" style="max-width:320px">
+      <div class="spacer"></div>
+      <button class="btn btn-primary" id="user-add">+ New user</button>
+    </div>
+    <div id="user-table"></div>`;
+
+  const renderTable = list => {
+    $('#user-table').innerHTML = list.length ? `
+      <table>
+        <thead><tr><th>ID</th><th>Name</th><th>Role</th><th>Subject</th><th></th></tr></thead>
+        <tbody>${list.map(u => `
+          <tr>
+            <td><code>${esc(u.id)}</code></td>
+            <td>${esc(u.name)}</td>
+            <td><span class="badge badge-${u.role.toLowerCase()}">${u.role}</span></td>
+            <td>${u.subject ? esc(u.subject) : '<span style="color:var(--muted)">—</span>'}</td>
+            <td>
+              <div class="row-actions">
+                <button class="btn btn-secondary btn-sm" data-edit="${esc(u.id)}">Edit</button>
+                <button class="btn btn-secondary btn-sm" data-reset="${esc(u.id)}">Reset PW</button>
+                <button class="btn btn-danger btn-sm" data-del="${esc(u.id)}">Delete</button>
+              </div>
+            </td>
+          </tr>`).join('')}</tbody>
+      </table>` : '<div class="empty">No users.</div>';
+    el.querySelectorAll('[data-edit]').forEach(b => b.onclick = () => editUser(b.dataset.edit));
+    el.querySelectorAll('[data-del]').forEach(b => b.onclick = () => deleteUser(b.dataset.del));
+    el.querySelectorAll('[data-reset]').forEach(b => b.onclick = () => resetPassword(b.dataset.reset));
+  };
+  renderTable(users);
+
+  $('#user-search').oninput = e => {
+    const q = e.target.value.toLowerCase().trim();
+    renderTable(!q ? users : users.filter(u =>
+      u.id.toLowerCase().includes(q) || u.name.toLowerCase().includes(q)));
+  };
+  $('#user-add').onclick = () => addUser();
+};
+
+async function nextUserId(prefix) {
+  const { data } = await sb.from('users').select('id')
+    .like('id', prefix + '%').order('id', { ascending: false }).limit(1);
+  if (!data || data.length === 0) return prefix + '001';
+  const n = parseInt(data[0].id.slice(1), 10) + 1;
+  return prefix + String(n).padStart(3, '0');
+}
+
+function addUser() {
+  openModal(`
+    <h2>New user</h2>
+    <p class="subtitle">Create an account</p>
+    <div class="field"><label>Role</label>
+      <select class="input" id="f-role">
+        <option value="STUDENT">Student</option>
+        <option value="TEACHER">Teacher</option>
+        <option value="ADMIN">Admin</option>
+      </select>
+    </div>
+    <div class="field"><label>Name</label><input class="input" id="f-name"></div>
+    <div class="field" id="f-subject-wrap" hidden>
+      <label>Subject taught</label><input class="input" id="f-subject">
+    </div>
+    <div class="field"><label>Password</label>
+      <input class="input" type="password" id="f-password"></div>
+  `, [
+    { label: 'Cancel', onClick: closeModal },
+    { label: 'Create', primary: true, onClick: async () => {
+        try {
+          const role = $('#f-role').value;
+          const name = $('#f-name').value.trim();
+          const subject = role === 'TEACHER' ? $('#f-subject').value.trim() : null;
+          const password = $('#f-password').value;
+          if (!name || !password) throw new Error('Name and password are required');
+          if (role === 'TEACHER' && !subject) throw new Error('Teachers must have a subject');
+          const prefix = role[0];
+          const id = await nextUserId(prefix);
+          const { error } = await sb.from('users').insert([{ id, name, role, subject, password }]);
+          if (error) throw error;
+          await log('ADD_USER', `${id} ${role} ${name}`);
+          cacheClear();
+          closeModal(); toast(`User ${id} created`, 'success'); render();
+        } catch (err) { toast(err.message, 'error'); }
+      }},
+  ]);
+  const roleSel = $('#f-role'), wrap = $('#f-subject-wrap');
+  roleSel.onchange = () => { wrap.hidden = roleSel.value !== 'TEACHER'; };
+}
+
+async function editUser(id) {
+  const users = await loadUsers();
+  const u = users.find(x => x.id === id);
+  if (!u) return;
+  openModal(`
+    <h2>Edit user</h2>
+    <p class="subtitle">${esc(u.id)} · ${u.role}</p>
+    <div class="field"><label>Name</label>
+      <input class="input" id="e-name" value="${esc(u.name)}"></div>
+    ${u.role === 'TEACHER' ? `
+      <div class="field"><label>Subject taught</label>
+        <input class="input" id="e-subject" value="${esc(u.subject || '')}"></div>` : ''}
+  `, [
+    { label: 'Cancel', onClick: closeModal },
+    { label: 'Save', primary: true, onClick: async () => {
+        try {
+          const patch = { name: $('#e-name').value.trim() };
+          if (u.role === 'TEACHER') patch.subject = $('#e-subject').value.trim();
+          const { error } = await sb.from('users').update(patch).eq('id', u.id);
+          if (error) throw error;
+          await log('UPDATE_USER', `${u.id} ${patch.name}`);
+          cacheClear(); closeModal(); toast('Updated', 'success'); render();
+        } catch (err) { toast(err.message, 'error'); }
+      }},
+  ]);
+}
+
+async function deleteUser(id) {
+  if (!confirm(`Delete user ${id}? This cascades to their grades.`)) return;
+  try {
+    const { error } = await sb.from('users').delete().eq('id', id);
+    if (error) throw error;
+    await log('DELETE_USER', id);
+    cacheClear(); toast('Deleted', 'success'); render();
+  } catch (err) { toast(err.message, 'error'); }
+}
+
+function resetPassword(id) {
+  openModal(`
+    <h2>Reset password</h2>
+    <p class="subtitle">${esc(id)}</p>
+    <div class="field"><label>New password</label>
+      <input class="input" type="password" id="r-pw"></div>
+    <div class="field"><label>Confirm</label>
+      <input class="input" type="password" id="r-pw2"></div>
+  `, [
+    { label: 'Cancel', onClick: closeModal },
+    { label: 'Reset', primary: true, onClick: async () => {
+        if ($('#r-pw').value !== $('#r-pw2').value) return toast('Passwords do not match', 'error');
+        try {
+          const { error } = await sb.from('users').update({ password: $('#r-pw').value }).eq('id', id);
+          if (error) throw error;
+          await log('RESET_PASSWORD', id);
+          closeModal(); toast('Password reset', 'success');
+        } catch (err) { toast(err.message, 'error'); }
+      }},
+  ]);
+}
+
+/* -------- Subjects -------- */
+views.subjects = async function(el) {
+  const subs = await loadSubjects();
+  el.innerHTML = `
+    <div class="toolbar">
+      <div class="spacer"></div>
+      <button class="btn btn-primary" id="subj-add">+ Add subject</button>
+    </div>
+    <div id="subj-table"></div>`;
+  const renderTable = list => {
+    $('#subj-table').innerHTML = list.length ? `
+      <table>
+        <thead><tr><th>Subject</th><th>Credits</th><th></th></tr></thead>
+        <tbody>${list.map(s => `
+          <tr>
+            <td><strong>${esc(s.name)}</strong></td>
+            <td>${s.credits}</td>
+            <td><div class="row-actions">
+              <button class="btn btn-secondary btn-sm" data-edit="${esc(s.name)}">Edit</button>
+            </div></td>
+          </tr>`).join('')}</tbody>
+      </table>` : '<div class="empty">No subjects yet.</div>';
+    el.querySelectorAll('[data-edit]').forEach(b => b.onclick = () => editSubject(b.dataset.edit));
+  };
+  renderTable(subs);
+  $('#subj-add').onclick = () => editSubject('');
+
+  async function editSubject(name) {
+    const cur = subs.find(s => s.name === name);
+    openModal(`
+      <h2>${cur ? 'Edit' : 'New'} subject</h2>
+      <p class="subtitle">Credits weight the subject in GPA</p>
+      <div class="field"><label>Name</label>
+        <input class="input" id="s-name" value="${esc(cur ? cur.name : '')}" ${cur ? 'readonly' : ''}>
+      </div>
+      <div class="field"><label>Credits</label>
+        <input class="input" type="number" step="0.5" min="0.5" max="20"
+          id="s-credits" value="${cur ? cur.credits : 1}"></div>
+    `, [
+      { label: 'Cancel', onClick: closeModal },
+      { label: 'Save', primary: true, onClick: async () => {
+          try {
+            const subjName = $('#s-name').value.trim();
+            const credits = parseFloat($('#s-credits').value);
+            if (!subjName) throw new Error('Name is required');
+            if (!(credits > 0 && credits <= 20)) throw new Error('Credits must be 0–20');
+            const { error } = await sb.from('subjects').upsert([{ name: subjName, credits }]);
+            if (error) throw error;
+            await log('SET_CREDITS', `${subjName} = ${credits}`);
+            cacheClear(); closeModal(); toast('Saved', 'success'); render();
+          } catch (err) { toast(err.message, 'error'); }
+        }},
+    ]);
+  }
+};
+
+/* -------- Students (admin + teacher) -------- */
+views.students = async function(el) {
+  const users = await loadUsers();
+  const students = users.filter(u => u.role === 'STUDENT');
+  el.innerHTML = `
+    <div class="toolbar">
+      <input class="input" id="stud-search" placeholder="Search students…" style="max-width:320px">
+    </div>
+    <div id="stud-grid" class="grid grid-3"></div>`;
+  const renderGrid = list => {
+    $('#stud-grid').innerHTML = list.length ? list.map(s => `
+      <div class="card" data-card="${esc(s.id)}">
+        <div style="display:flex;align-items:center;gap:12px">
+          <div class="avatar" style="width:40px;height:40px;font-size:15px">
+            ${esc(s.name.charAt(0).toUpperCase())}
+          </div>
+          <div>
+            <h3>${esc(s.name)}</h3>
+            <p class="subtitle">${esc(s.id)}</p>
+          </div>
+        </div>
+      </div>`).join('') : '<div class="empty">No students found.</div>';
+    el.querySelectorAll('[data-card]').forEach(c => c.onclick = () => openStudent(c.dataset.card));
+  };
+  renderGrid(students);
+  $('#stud-search').oninput = e => {
+    const q = e.target.value.toLowerCase().trim();
+    renderGrid(!q ? students : students.filter(s =>
+      s.id.toLowerCase().includes(q) || s.name.toLowerCase().includes(q)));
+  };
+};
+
+async function openStudent(id) {
+  const me = currentUser;
+  const [grades, comps, leader] = await Promise.all([
+    computeSubjectGrades(id),
+    loadComponentsFor(id),
+    computeLeaderboard(me.role === 'TEACHER' ? me : null),
+  ]);
+  const rank = leader.find(r => r.studentId === id);
+
+  // Filter components visible to teacher
+  const visibleComps = me.role === 'TEACHER'
+    ? comps.filter(c => c.subject.toLowerCase() === (me.subject || '').toLowerCase())
+    : comps;
+  const visibleGrades = me.role === 'TEACHER'
+    ? grades.filter(g => g.subject.toLowerCase() === (me.subject || '').toLowerCase())
+    : grades;
+
+  const transcript = buildTranscript(id, visibleGrades);
+
+  openModal(`
+    <h2>${esc(id)}</h2>
+    <p class="subtitle">${rank
+      ? `Rank #${rank.rank} · GPA ${rank.gpa.toFixed(2)} · avg ${rank.average.toFixed(1)}`
+      : 'No grades yet'}</p>
+    <h3 style="font-size:14px;margin:16px 0 8px">Subject grades</h3>
+    ${subjectGradeTable(visibleGrades)}
+    <h3 style="font-size:14px;margin:20px 0 8px">Grade components</h3>
+    <div id="modal-comps">${componentTable(visibleComps, true)}</div>
+    <h3 style="font-size:14px;margin:20px 0 8px">Transcript</h3>
+    <pre class="transcript">${esc(transcript)}</pre>
+  `, [
+    { label: 'Close', onClick: closeModal },
+    { label: '+ Add component', primary: true, onClick: () => addComponent(id) },
+  ]);
+
+  const mc = $('#modal-content');
+  mc.querySelectorAll('[data-edit]').forEach(b => b.onclick = () => {
+    const comp = visibleComps.find(c => String(c.id) === b.dataset.edit);
+    if (comp) editComponent(id, comp);
+  });
+  mc.querySelectorAll('[data-del]').forEach(b => b.onclick = async () => {
+    const comp = visibleComps.find(c => String(c.id) === b.dataset.del);
+    if (!comp) return;
+    if (!confirm(`Delete ${comp.subject} / ${comp.component_name}?`)) return;
+    try {
+      const { error } = await sb.from('grade_components').delete().eq('id', comp.id);
+      if (error) throw error;
+      await log('DELETE_COMPONENT', `${id} ${comp.subject}/${comp.component_name}`);
+      cacheClear(); toast('Deleted', 'success');
+      openStudent(id);
+    } catch (err) { toast(err.message, 'error'); }
+  });
+}
+
+function buildTranscript(studentId, grades) {
+  const lines = [];
+  lines.push('=============================================');
+  lines.push(' TRANSCRIPT — ' + studentId);
+  lines.push('=============================================');
+  if (!grades.length) { lines.push(' No grades on record.'); return lines.join('\n'); }
+  lines.push(pad('Subject', 20) + pad('Score', 7) + pad('Ltr', 5) + pad('Cr', 5) + 'GPA');
+  let creditsSum = 0, pointsSum = 0, scoreSum = 0;
+  for (const g of grades) {
+    lines.push(pad(g.subject, 20)
+      + pad(g.score.toFixed(1), 7)
+      + pad(g.letter, 5)
+      + pad(String(g.credits), 5)
+      + g.gpaPoints.toFixed(2));
+    creditsSum += Number(g.credits);
+    pointsSum += g.gpaPoints * Number(g.credits);
+    scoreSum += g.score;
+  }
+  const avg = scoreSum / grades.length;
+  const gpa = creditsSum === 0 ? 0 : pointsSum / creditsSum;
+  lines.push('---------------------------------------------');
+  lines.push(` Average: ${avg.toFixed(2)}    GPA: ${gpa.toFixed(2)}    Credits: ${creditsSum.toFixed(1)}`);
+  return lines.join('\n');
+}
+function pad(s, n) { s = String(s); return s.length >= n ? s : s + ' '.repeat(n - s.length); }
+
+function addComponent(studentId) {
+  const lockedSubject = currentUser.role === 'TEACHER' ? currentUser.subject : null;
+  openModal(`
+    <h2>Add component</h2>
+    <p class="subtitle">Student ${esc(studentId)}</p>
+    <div class="field"><label>Subject</label>
+      ${lockedSubject
+        ? `<input class="input" value="${esc(lockedSubject)}" readonly>`
+        : `<input class="input" id="c-subject" placeholder="Math">`}
+    </div>
+    <div class="field"><label>Component name</label>
+      <input class="input" id="c-name" placeholder="Quiz 1 / Midterm / Final"></div>
+    <div class="grid grid-2" style="gap:12px">
+      <div class="field"><label>Score (0-100)</label>
+        <input class="input" type="number" min="0" max="100" step="0.1" id="c-score"></div>
+      <div class="field"><label>Weight</label>
+        <input class="input" type="number" min="0.1" step="0.1" id="c-weight" value="1"></div>
+    </div>
+    <div class="field"><label>Comment (optional)</label>
+      <input class="input" id="c-comment"></div>
+  `, [
+    { label: 'Cancel', onClick: closeModal },
+    { label: 'Add', primary: true, onClick: async () => {
+        try {
+          const subject = lockedSubject || $('#c-subject').value.trim();
+          const component_name = $('#c-name').value.trim();
+          const score = parseFloat($('#c-score').value);
+          const weight = parseFloat($('#c-weight').value);
+          const comment = $('#c-comment').value.trim() || null;
+          if (!subject || !component_name) throw new Error('Subject and name required');
+          if (!(score >= 0 && score <= 100)) throw new Error('Score must be 0–100');
+          if (!(weight > 0)) throw new Error('Weight must be > 0');
+          // ensure subject exists
+          const subs = await loadSubjects();
+          if (!subs.find(s => s.name.toLowerCase() === subject.toLowerCase())) {
+            await sb.from('subjects').insert([{ name: subject, credits: 1.0 }]);
+          }
+          const { error } = await sb.from('grade_components').insert([{
+            student_id: studentId, subject, component_name, score, weight,
+            graded_by: currentUser.id, comment,
+            updated_at: Date.now(),
+          }]);
+          if (error) throw error;
+          await log('ADD_COMPONENT',
+            `${studentId} ${subject}/${component_name} = ${score}`);
+          cacheClear(); closeModal(); toast('Component added', 'success');
+          openStudent(studentId);
+        } catch (err) { toast(err.message, 'error'); }
+      }},
+  ]);
+}
+
+function editComponent(studentId, comp) {
+  openModal(`
+    <h2>Edit component</h2>
+    <p class="subtitle">${esc(comp.subject)} / ${esc(comp.component_name)}</p>
+    <div class="grid grid-2" style="gap:12px">
+      <div class="field"><label>Score</label>
+        <input class="input" type="number" step="0.1" id="e-score" value="${comp.score}"></div>
+      <div class="field"><label>Weight</label>
+        <input class="input" type="number" step="0.1" id="e-weight" value="${comp.weight}"></div>
+    </div>
+    <div class="field"><label>Comment</label>
+      <input class="input" id="e-comment" value="${esc(comp.comment || '')}"></div>
+  `, [
+    { label: 'Cancel', onClick: closeModal },
+    { label: 'Save', primary: true, onClick: async () => {
+        try {
+          const score = parseFloat($('#e-score').value);
+          const weight = parseFloat($('#e-weight').value);
+          const comment = $('#e-comment').value.trim() || null;
+          const { error } = await sb.from('grade_components').update({
+            score, weight, comment, graded_by: currentUser.id, updated_at: Date.now(),
+          }).eq('id', comp.id);
+          if (error) throw error;
+          await log('UPDATE_COMPONENT',
+            `${studentId} ${comp.subject}/${comp.component_name} = ${score}`);
+          cacheClear(); closeModal(); toast('Updated', 'success');
+          openStudent(studentId);
+        } catch (err) { toast(err.message, 'error'); }
+      }},
+  ]);
+}
+
+/* -------- Leaderboard / Honor / Failing -------- */
+views.leaderboard = async function(el) {
+  const rows = await computeLeaderboard(currentUser);
+  el.innerHTML = `<div class="card">
+    <h3>🏆 Leaderboard</h3>
+    <p class="subtitle">By weighted average</p>
+    <div style="margin-top:12px">${leaderTable(rows)}</div>
+  </div>`;
+};
+
+views['honor-roll'] = async function(el) {
+  const rows = (await computeLeaderboard()).filter(r => r.average >= HONOR_ROLL_MIN);
+  el.innerHTML = `<div class="card">
+    <h3>⭐ Honor roll</h3>
+    <p class="subtitle">Average ≥ ${HONOR_ROLL_MIN}</p>
+    <div style="margin-top:12px">${leaderTable(rows)}</div>
+  </div>`;
+};
+
+views.failing = async function(el) {
+  const leader = await computeLeaderboard();
+  const failing = [];
+  for (const r of leader) {
+    const grades = await computeSubjectGrades(r.studentId);
+    if (grades.some(g => !isPass(g.score))) failing.push(r);
+  }
+  el.innerHTML = `<div class="card">
+    <h3>⚠ Failing students</h3>
+    <p class="subtitle">At least one failing subject</p>
+    <div style="margin-top:12px">${leaderTable(failing)}</div>
+  </div>`;
+};
+
+/* -------- Class statistics -------- */
+async function computeStats(viewer) {
+  const users = await loadUsers();
+  const students = users.filter(u => u.role === 'STUDENT');
+  const bySubject = {};
+  for (const s of students) {
+    const grades = await computeSubjectGrades(s.id);
+    for (const g of grades) {
+      if (viewer && viewer.role === 'TEACHER'
+          && g.subject.toLowerCase() !== (viewer.subject || '').toLowerCase()) continue;
+      (bySubject[g.subject] ||= []).push(g.score);
+    }
+  }
+  const result = [];
+  for (const [subject, scores] of Object.entries(bySubject)) {
+    scores.sort((a, b) => a - b);
+    const n = scores.length;
+    const avg = scores.reduce((a, b) => a + b, 0) / n;
+    const median = n % 2 === 0
+      ? (scores[n/2 - 1] + scores[n/2]) / 2
+      : scores[Math.floor(n/2)];
+    const variance = scores.reduce((a, s) => a + (s - avg) ** 2, 0) / n;
+    const stdDev = Math.sqrt(variance);
+    const min = scores[0];
+    const max = scores[n - 1];
+    const passed = scores.filter(s => isPass(s)).length;
+    const passRate = passed / n * 100;
+    result.push({ subject, count: n, average: avg, median, stdDev, min, max, passed, passRate });
+  }
+  result.sort((a, b) => a.subject.localeCompare(b.subject));
+  return result;
+}
+
+views.stats = async function(el) {
+  const stats = await computeStats(currentUser);
+  el.innerHTML = `<div class="card">
+    <h3>📊 Class statistics</h3>
+    <p class="subtitle">Per subject · median · std-dev · pass rate</p>
+    <div style="margin-top:12px">${statsTable(stats)}</div>
+  </div>`;
+};
+
+/* -------- Audit log -------- */
+views.audit = async function(el) {
+  const { data: logs, error } = await sb.from('audit_log')
+    .select('*').order('created_at', { ascending: false }).limit(100);
+  if (error) throw error;
+  el.innerHTML = `<div class="card">
+    <h3>📋 Audit log</h3>
+    <p class="subtitle">Most recent 100 entries</p>
+    <div style="margin-top:12px">${
+      logs.length
+        ? `<table>
+             <thead><tr><th>When</th><th>Actor</th><th>Action</th><th>Details</th></tr></thead>
+             <tbody>${logs.map(l => `
+               <tr>
+                 <td style="font-family:monospace;font-size:11px">${new Date(l.created_at).toLocaleString()}</td>
+                 <td>${esc(l.actor || '—')}</td>
+                 <td><code>${esc(l.action)}</code></td>
+                 <td>${esc(l.details || '')}</td>
+               </tr>`).join('')}</tbody>
+           </table>`
+        : '<div class="empty">No entries.</div>'
+    }</div>
+  </div>`;
+};
+
+/* -------- Student: my grades -------- */
+views['my-grades'] = async function(el) {
+  const me = currentUser;
+  const [grades, comps] = await Promise.all([
+    computeSubjectGrades(me.id),
+    loadComponentsFor(me.id),
+  ]);
+  const transcript = buildTranscript(me.id, grades);
+  el.innerHTML = `
+    <div class="grid grid-2">
+      <div class="card">
+        <h3>📝 Subject grades</h3>
+        <p class="subtitle">Weighted averages</p>
+        <div style="margin-top:12px">${subjectGradeTable(grades)}</div>
+      </div>
+      <div class="card">
+        <h3>📄 Transcript</h3>
+        <p class="subtitle">Detailed report</p>
+        <pre class="transcript" style="margin-top:12px">${esc(transcript)}</pre>
+      </div>
+    </div>
+    <div class="card" style="margin-top:16px">
+      <h3>🔍 Components</h3>
+      <p class="subtitle">All recorded scores</p>
+      <div style="margin-top:12px">${componentTable(comps, false)}</div>
+    </div>`;
+};
+
+/* -------- Student: top 5 -------- */
+views.top = async function(el) {
+  const rows = (await computeLeaderboard()).slice(0, 5);
+  el.innerHTML = `<div class="card">
+    <h3>🏆 Class top 5</h3>
+    <p class="subtitle">Highest weighted averages</p>
+    <div style="margin-top:12px">${leaderTable(rows)}</div>
+  </div>`;
+};
+
+/* -------- Settings (change own password) -------- */
+views.settings = async function(el) {
+  el.innerHTML = `
+    <div class="card" style="max-width:520px">
+      <h3>⚙ Account</h3>
+      <p class="subtitle">Update your password</p>
+      <div style="margin-top:16px">
+        <div class="field"><label>Current password</label>
+          <input class="input" type="password" id="pw-old"></div>
+        <div class="field"><label>New password</label>
+          <input class="input" type="password" id="pw-new"></div>
+        <div class="field"><label>Confirm new password</label>
+          <input class="input" type="password" id="pw-confirm"></div>
+        <button class="btn btn-primary btn-block" id="pw-save">Update password</button>
+      </div>
+    </div>`;
+  $('#pw-save').onclick = async () => {
+    try {
+      const old = $('#pw-old').value;
+      const nw = $('#pw-new').value;
+      if (old !== currentUser.password) throw new Error('Current password is wrong');
+      if (nw.length < 6) throw new Error('New password must be at least 6 characters');
+      if (nw !== $('#pw-confirm').value) throw new Error('Passwords do not match');
+      const { error } = await sb.from('users').update({ password: nw }).eq('id', currentUser.id);
+      if (error) throw error;
+      currentUser.password = nw;
+      await log('CHANGE_PASSWORD', 'own password');
+      toast('Password updated', 'success');
+      $('#pw-old').value = $('#pw-new').value = $('#pw-confirm').value = '';
+    } catch (err) { toast(err.message, 'error'); }
+  };
+};
+</script>
 </body>
 </html>
