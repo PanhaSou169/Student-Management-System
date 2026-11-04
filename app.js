@@ -2,6 +2,7 @@
    Student Management System — client-side logic
    Talks directly to Supabase (users, subjects, grade_components,
    audit_log). Renders everything into #content.
+   Works with the fixed index.html (ids: login-view, app-view, ...).
    ================================================================ */
 
 const SUPABASE_URL = 'https://frotwvjkuriejaluvjvp.supabase.co';
@@ -11,7 +12,6 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 /* ---------------- state ---------------- */
 let currentUser = null;
 let currentView = 'dashboard';
-let alertTimer = null;
 const cache = { users: null, subjects: null, components: null };
 
 const PASS_MARK = 50;
@@ -26,15 +26,19 @@ function esc(v) {
     ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
 }
 
-function showAlert(message, isError = false) {
-  const box = $('#alert-box');
-  if (!box) return;
-  box.textContent = message;
-  box.className = 'alert ' + (isError ? 'alert-error' : 'alert-success');
-  box.style.display = 'block';
-  clearTimeout(alertTimer);
-  alertTimer = setTimeout(() => { box.style.display = 'none'; }, 4000);
+function toast(msg, type = 'info') {
+  const el = document.createElement('div');
+  el.className = 'toast ' + type;
+  el.textContent = msg;
+  $('#toast-root').append(el);
+  setTimeout(() => {
+    el.style.transition = 'opacity .3s,transform .3s';
+    el.style.opacity = '0';
+    el.style.transform = 'translateX(20px)';
+    setTimeout(() => el.remove(), 300);
+  }, 3200);
 }
+function showAlert(message, isError = false) { toast(message, isError ? 'error' : 'success'); }
 
 function openModal(html, actions) {
   $('#modal-content').innerHTML = html + '<div class="modal-actions" id="modal-actions"></div>';
@@ -216,15 +220,16 @@ $('#login-form').onsubmit = async e => {
   btn.disabled = true;
   btn.textContent = 'Signing in…';
   try {
-    const id = $('#login-id').value.trim();
+    const id = $('#login-id').value.trim().toUpperCase();
     const password = $('#login-password').value;
     const { data, error } = await supabaseClient.from('users').select('*')
-      .eq('id', id).eq('password', password).single();
-    if (error || !data) throw new Error('Invalid ID or password');
+      .eq('id', id).eq('password', password).maybeSingle();
+    if (error) { console.error(error); throw new Error(error.message || 'Login failed'); }
+    if (!data) throw new Error('Invalid ID or password');
     currentUser = data;
     initDashboard();
   } catch (err) {
-    showAlert(err.message || 'Login failed', true);
+    toast(err.message || 'Login failed', 'error');
   } finally {
     btn.disabled = false;
     btn.textContent = 'Sign in';
@@ -235,8 +240,8 @@ function logout() {
   currentUser = null;
   invalidate();
   currentView = 'dashboard';
-  $('#view-dashboard').hidden = true;
-  $('#view-login').hidden = false;
+  $('#app-view').hidden = true;
+  $('#login-view').hidden = false;
   $('#login-form').reset();
   $('#content').innerHTML = '';
 }
@@ -244,12 +249,13 @@ $('#logout-btn').onclick = logout;
 
 /* ---------------- dashboard init ---------------- */
 function initDashboard() {
-  $('#view-login').hidden = true;
-  $('#view-dashboard').hidden = false;
-  $('#nav-user-details').textContent = currentUser.name;
+  $('#login-view').hidden = true;
+  $('#app-view').hidden = false;
+  $('#user-name').textContent = currentUser.name;
   $('#user-role').textContent = currentUser.role;
   $('#user-role').className = 'badge badge-' + currentUser.role.toLowerCase();
   $('#user-avatar').textContent = (currentUser.name || '?').charAt(0).toUpperCase();
+  currentView = 'dashboard';
   renderNav();
   render();
 }
@@ -300,7 +306,7 @@ function renderNav() {
     const b = document.createElement('button');
     b.className = 'nav-item';
     b.dataset.view = item.id;
-    b.innerHTML = `<span class="icon">${item.icon}</span><span>${item.label}</span>`;
+    b.innerHTML = `<span style="font-size:16px;width:18px;text-align:center">${item.icon}</span><span>${item.label}</span>`;
     b.onclick = () => { currentView = item.id; render(); };
     nav.append(b);
   }
@@ -358,7 +364,7 @@ function subjectGradeTable(grades) {
   </table>`;
 }
 
-function componentTable(comps, interactive, onEdit, onDelete) {
+function componentTable(comps, interactive) {
   if (!comps.length) return '<div class="empty">No components.</div>';
   return `<table>
     <thead><tr><th>Subject</th><th>Component</th><th>Score</th><th>Weight</th>
@@ -619,6 +625,7 @@ async function editUser(id) {
 }
 
 async function deleteUser(id) {
+  if (id === currentUser.id) return showAlert('You cannot delete your own account', true);
   if (!confirm(`Delete user ${id}? This cascades to their grades.`)) return;
   try {
     const { error } = await supabaseClient.from('users').delete().eq('id', id);
@@ -642,6 +649,7 @@ function resetPassword(id) {
     { label: 'Cancel', onClick: closeModal },
     { label: 'Reset', primary: true, onClick: async () => {
         if ($('#r-pw').value !== $('#r-pw2').value) return showAlert('Passwords do not match', true);
+        if ($('#r-pw').value.length < 6) return showAlert('Password must be at least 6 characters', true);
         try {
           const { error } = await supabaseClient.from('users')
             .update({ password: $('#r-pw').value }).eq('id', id);
@@ -894,6 +902,8 @@ function editComponent(studentId, comp) {
           const score  = parseFloat($('#e-score').value);
           const weight = parseFloat($('#e-weight').value);
           const comment = $('#e-comment').value.trim() || null;
+          if (!(score >= 0 && score <= 100)) throw new Error('Score must be 0–100');
+          if (!(weight > 0)) throw new Error('Weight must be > 0');
           const { error } = await supabaseClient.from('grade_components').update({
             score, weight, comment,
             graded_by: currentUser.id,
@@ -969,7 +979,7 @@ views.audit = async function(el) {
              <tbody>${logs.map(l => `
                <tr>
                  <td style="font-family:monospace;font-size:11px">
-                   ${new Date(l.created_at).toLocaleString()}
+                   ${l.created_at ? new Date(l.created_at).toLocaleString() : '—'}
                  </td>
                  <td>${esc(l.actor || '—')}</td>
                  <td><code>${esc(l.action)}</code></td>
@@ -1051,8 +1061,3 @@ views.settings = async function(el) {
     } catch (err) { showAlert(err.message, true); }
   };
 };
-
-/* ---------------- boot ---------------- */
-(function boot() {
-  // Login screen is visible by default via the HTML
-})();
