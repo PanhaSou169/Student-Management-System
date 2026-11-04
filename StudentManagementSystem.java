@@ -1,8 +1,8 @@
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.security.MessageDigest;
 import java.security.GeneralSecurityException;
+import java.security.MessageDigest;
 import java.security.SecureRandom;
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -37,16 +37,6 @@ import javax.crypto.spec.PBEKeySpec;
  *   CsvStore                                  - storage (CSV mirror + import)
  *   AuthService, SchoolService                - business logic and permissions
  *   StudentManagementSystem                   - console UI only
- *
- * Features:
- *   • Grade components (Quiz/Midterm/Final...) with weights and comments
- *   • Weighted subject grades -> letter -> GPA points
- *   • Credit-weighted GPA and printable transcript
- *   • Top-of-class leaderboard, honor roll, failing-students report
- *   • Subject catalog with credits
- *   • Median / std-dev / pass-rate class statistics
- *   • Every mutation is mirrored to CSV under data/
- *   • Bootstrap: import CSVs back into an empty DB
  *
  * Data files (in data/, or $SMS_DATA_DIR):
  *   users.csv, subjects.csv, grade_components.csv, audit_log.csv
@@ -497,6 +487,13 @@ final class AuthService {
 //  Business logic: users, grades, rankings, permissions
 // =====================================================================
 final class SchoolService {
+    /**
+     * FIX: internal "system" viewer used ONLY to compute rankings.
+     * Without it, a student calling topN()/rankOf() hit checkCanView() when the
+     * leaderboard read other students' grades, so "Top 5" and "My rank" crashed.
+     */
+    private static final User SYSTEM = new User("SYSTEM", "System", "ADMIN", null);
+
     private final Database db;
     private final Clock clock;
     private final AuditLog audit;
@@ -645,7 +642,7 @@ final class SchoolService {
                             rs.getLong("id"), rs.getString("student_id"), rs.getString("subject"),
                             rs.getString("component_name"), rs.getDouble("score"), rs.getDouble("weight"),
                             rs.getString("graded_by"), rs.getLong("updated_at"), rs.getString("comment"));
-                        if (viewer.is("TEACHER") && (c.subject() == null || viewer.subject() == null
+                    if (viewer.is("TEACHER") && (c.subject() == null || viewer.subject() == null
                             || !c.subject().equalsIgnoreCase(viewer.subject()))) continue;
                     out.add(c);
                 }
@@ -815,8 +812,11 @@ final class SchoolService {
     private List<StudentRank> buildLeaderboard(User viewer, int limit) {
         record Row(String id, String name, double avg, double gpa, int count) {}
         List<Row> rows = new ArrayList<>();
+        // FIX: teachers keep their own subject-only view; everyone else is ranked
+        // with the internal SYSTEM viewer so students can see Top 5 / My rank.
+        User scope = viewer.is("TEACHER") ? viewer : SYSTEM;
         for (User s : students()) {
-            List<SubjectGrade> grades = getAllSubjectGrades(viewer, s.id());
+            List<SubjectGrade> grades = getAllSubjectGrades(scope, s.id());
             if (grades.isEmpty()) continue;
             double avg = grades.stream().mapToDouble(SubjectGrade::score).average().orElse(0);
             double gpa = gpaOf(grades);
@@ -839,6 +839,7 @@ final class SchoolService {
     }
 
     Optional<StudentRank> rankOf(User viewer, String studentId) {
+        checkCanView(viewer, studentId);
         for (StudentRank r : buildLeaderboard(viewer, Integer.MAX_VALUE)) {
             if (r.studentId().equalsIgnoreCase(studentId)) return Optional.of(r);
         }
