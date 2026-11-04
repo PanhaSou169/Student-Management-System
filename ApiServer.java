@@ -221,6 +221,8 @@ public class ApiServer {
 
             // ---- users ----
             if (method.equals("GET") && path.equals("/users")) {
+                // FIX: students must not be able to list every account
+                if (me.is("STUDENT")) throw new ApiException(403, "Not allowed.");
                 List<Map<String, Object>> out = new ArrayList<>();
                 for (User u : school.allUsers()) out.add(userToMap(u));
                 json(ex, 200, out); return;
@@ -291,8 +293,8 @@ public class ApiServer {
                 Map<String, Object> b = body(ex);
                 String subject = str(b, "name");
                 if (subject.isBlank()) throw new ApiException(400, "Subject name required.");
-                mutate(() -> school.setSubjectCredits(me, subject, 1.0)); // placeholder;
-                // actual deletion is a two-step: refuse if in use, then delete
+                // FIX: the old "placeholder" line that reset credits to 1.0 was removed.
+                // Refuse if the subject is still used, otherwise delete it.
                 try (var ps = db.conn.prepareStatement(
                         "SELECT COUNT(*) FROM grade_components WHERE subject = ?")) {
                     ps.setString(1, subject);
@@ -541,7 +543,7 @@ public class ApiServer {
     }
 
     // ================================================================
-    //  Record → Map
+    //  Record -> Map
     // ================================================================
     static Map<String, Object> userToMap(User u) {
         Map<String, Object> m = new LinkedHashMap<>();
