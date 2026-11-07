@@ -15,36 +15,37 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 
 /*
- * Web API for the UPGRADED Student Management System.
+ * Web server + REST API for the Student Management System (MySQL).
  *
- * Compile together with StudentManagementSystem.java (+ CsvStore inside it):
+ * Files in the SAME folder:
+ *   StudentManagementSystem.java   (core classes + console app - unchanged)
+ *   ClassroomService.java          (attendance / assignments / announcements)
+ *   ClassroomApi.java              (their HTTP routes)
+ *   ApiServer.java                 (this file)
+ *   index.html  app.js  features.js
  *
- *     javac -cp ".:mysql-connector-j.jar" *.java
- *     java  -cp ".:mysql-connector-j.jar" ApiServer
+ * Compile:   javac -cp ".:mysql-connector-j.jar" *.java      (Windows: use ; instead of :)
+ * Run:       java  -cp ".:mysql-connector-j.jar" ApiServer
+ * Open:      http://localhost:8080
  *
- * Then open http://localhost:8080
- *
- * Every mutation is written to MySQL first, then mirrored to data/*.csv
- * exactly like the console app.
- *
- * Auth: POST /api/login returns a random bearer token. Every other request must
- * send "Authorization: Bearer <token>". The server looks the user up on each
- * call, so role changes and deletions take effect immediately.
+ * Auth: POST /api/login returns a random bearer token. Every other request must send
+ * "Authorization: Bearer <token>". The user is looked up on EVERY call, so role changes and
+ * deletions take effect immediately. All permission checks are done here on the server.
  */
 public class ApiServer {
-    static final String VERSION = "2.0.0-sms";
+    static final String VERSION = "3.0.0-sms";
 
     static final int PORT = Integer.parseInt(env("PORT", "8080"));
     static final boolean ONLINE = System.getenv("PORT") != null;
     static final boolean LOG_REQUESTS = "true".equalsIgnoreCase(env("SMS_LOG_REQUESTS", "false"));
-    static final long SESSION_MS = 2 * 60 * 60 * 1000L;
+    static final long SESSION_MS = 8 * 60 * 60 * 1000L;
     static final SecureRandom RANDOM = new SecureRandom();
     static final Scanner IN = new Scanner(System.in);
 
-    /** Whitelist of files that the static handler will serve. */
+    /** Files the static handler is allowed to serve. */
     static final Set<String> STATIC_EXT = Set.of("html", "js", "css", "ico", "svg", "png", "woff2");
 
-    /** Login rate limit — 10 attempts per minute per IP. */
+    /** Login rate limit: 10 attempts per minute per IP. */
     static final int LOGIN_RATE_LIMIT = 10;
     static final long LOGIN_WINDOW_MS = 60_000L;
     static final Map<String, Deque<Long>> loginHits = new ConcurrentHashMap<>();
@@ -67,6 +68,7 @@ public class ApiServer {
     static CsvStore csvStore;
     static AuthService auth;
     static SchoolService school;
+    static ClassroomService classroom;
 
     // ================================================================
     //  Start-up
@@ -83,7 +85,7 @@ public class ApiServer {
                     dbUser, dbPassword, env("SMS_DB_NAME", Config.DB_NAME));
         } catch (SQLException e) {
             System.out.println("Cannot connect to MySQL: " + e.getMessage());
-            System.out.println("Check MySQL is running, user/password are right, and the connector jar is on the classpath.");
+            System.out.println("Check: MySQL is running, user/password are right, and the connector jar is on the classpath.");
             return;
         }
 
@@ -91,6 +93,7 @@ public class ApiServer {
         AuditLog audit = new AuditLog(db, clock);
         auth = new AuthService(db, clock, audit);
         school = new SchoolService(db, clock, audit);
+        classroom = new ClassroomService(db, clock, audit, school); // creates its tables automatically
 
         System.out.println("API:       " + VERSION);
         System.out.println("SQL:       " + env("SMS_DB_URL", Config.DB_SERVER_URL) + env("SMS_DB_NAME", Config.DB_NAME));
@@ -117,7 +120,7 @@ public class ApiServer {
         HttpServer server = HttpServer.create(address, 0);
         server.createContext("/api/", ApiServer::handleApi);
         server.createContext("/", ApiServer::handleStatic);
-        server.setExecutor(Executors.newSingleThreadExecutor());
+        server.setExecutor(Executors.newSingleThreadExecutor()); // one request at a time = safe DB access
         server.start();
 
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
@@ -142,7 +145,7 @@ public class ApiServer {
         while (true) {
             System.out.print("Admin name: ");
             String name = IN.nextLine().trim();
-            String password = readSecret("Admin password: ");
+            String password = readSecret("Admin password (8+ chars, letter + digit): ");
             try {
                 String id = auth.createUser("setup", "ADMIN", name, null, password);
                 System.out.println("Admin created. Your login ID is " + id);
@@ -175,6 +178,16 @@ public class ApiServer {
         syncCsv();
     }
 
+    /** Students may only touch their own records; staff may touch anyone's. */
+    static void requireSelfOrStaff(User me, String studentId) {
+        if (me.is("STUDENT") && !me.id().equalsIgnoreCase(studentId.trim()))
+            throw new ApiException(403, "Students can only see their own data.");
+    }
+
+    static void requireStaff(User me) {
+        if (me.is("STUDENT")) throw new ApiException(403, "Not allowed.");
+    }
+
     // ================================================================
     //  HTTP entry point
     // ================================================================
@@ -191,20 +204,12 @@ public class ApiServer {
             String path = full.length() > 4 ? full.substring(4) : "/";
             Map<String, String> q = query(ex.getRequestURI().getRawQuery());
 
-            // ---- unauthenticated ----
+            // ---- no login needed ----
             if (method.equals("GET") && path.equals("/health")) {
                 Map<String, Object> m = new LinkedHashMap<>();
                 m.put("status", "OK");
                 m.put("version", VERSION);
                 m.put("time", System.currentTimeMillis());
-                m.put("csvFolder", csvStore.directory().toString());
-                json(ex, 200, m); return;
-            }
-            if (method.equals("GET") && path.equals("/version")) {
-                Map<String, Object> m = new LinkedHashMap<>();
-                m.put("version", VERSION);
-                m.put("sessions", sessions.size());
-                m.put("uptimeMs", System.currentTimeMillis());
                 json(ex, 200, m); return;
             }
             if (method.equals("POST") && path.equals("/login")) { login(ex); return; }
@@ -219,32 +224,45 @@ public class ApiServer {
                 json(ex, 200, userToMap(me)); return;
             }
 
+            // ---- dashboard numbers (admin) ----
+            if (method.equals("GET") && path.equals("/summary")) {
+                if (!me.is("ADMIN")) throw new ApiException(403, "Admin only.");
+                Map<String, Object> m = new LinkedHashMap<>();
+                m.put("students", count("SELECT COUNT(*) FROM users WHERE role = 'STUDENT'"));
+                m.put("teachers", count("SELECT COUNT(*) FROM users WHERE role = 'TEACHER'"));
+                m.put("subjects", count("SELECT COUNT(*) FROM subjects"));
+                m.put("components", count("SELECT COUNT(*) FROM grade_components"));
+                json(ex, 200, m); return;
+            }
+
             // ---- users ----
             if (method.equals("GET") && path.equals("/users")) {
-                // FIX: students must not be able to list every account
-                if (me.is("STUDENT")) throw new ApiException(403, "Not allowed.");
+                requireStaff(me); // students must not be able to list every account
                 List<Map<String, Object>> out = new ArrayList<>();
                 for (User u : school.allUsers()) out.add(userToMap(u));
                 json(ex, 200, out); return;
             }
-            if (method.equals("GET") && path.startsWith("/users/") && !path.equals("/users/search")) {
-                String id = path.substring("/users/".length());
-                Optional<User> u = school.find(id);
-                if (u.isEmpty()) throw new ApiException(404, "User not found.");
-                json(ex, 200, userToMap(u.get())); return;
-            }
             if (method.equals("GET") && path.equals("/users/search")) {
+                requireStaff(me);
                 String keyword = q.getOrDefault("q", "");
                 boolean studentsOnly = "true".equals(q.getOrDefault("students", "false"));
                 List<Map<String, Object>> out = new ArrayList<>();
                 for (User u : school.search(keyword, studentsOnly)) out.add(userToMap(u));
                 json(ex, 200, out); return;
             }
+            if (method.equals("GET") && path.startsWith("/users/")) {
+                String id = path.substring("/users/".length());
+                requireSelfOrStaff(me, id);
+                Optional<User> u = school.find(id);
+                if (u.isEmpty()) throw new ApiException(404, "User not found.");
+                json(ex, 200, userToMap(u.get())); return;
+            }
             if (method.equals("POST") && path.equals("/users")) {
                 if (!me.is("ADMIN")) throw new ApiException(403, "Only an admin can create users.");
                 Map<String, Object> b = body(ex);
                 String newId = auth.createUser(me.id(), str(b, "role").toUpperCase(),
                         str(b, "name"), str(b, "subject"), str(b, "password"));
+                if (str(b, "role").equalsIgnoreCase("TEACHER")) school.ensureSubject(str(b, "subject"));
                 syncCsv();
                 Map<String, Object> out = new LinkedHashMap<>();
                 out.put("status", "OK");
@@ -264,6 +282,9 @@ public class ApiServer {
             if (method.equals("POST") && path.equals("/users/reset-password")) {
                 Map<String, Object> b = body(ex);
                 mutate(() -> auth.resetPassword(me, str(b, "id"), str(b, "password")));
+                // a reset password must end that user's open sessions
+                String target = str(b, "id").trim();
+                sessions.entrySet().removeIf(e -> e.getValue().userId().equalsIgnoreCase(target));
                 ok(ex); return;
             }
             if (method.equals("POST") && path.equals("/users/change-password")) {
@@ -293,8 +314,6 @@ public class ApiServer {
                 Map<String, Object> b = body(ex);
                 String subject = str(b, "name");
                 if (subject.isBlank()) throw new ApiException(400, "Subject name required.");
-                // FIX: the old "placeholder" line that reset credits to 1.0 was removed.
-                // Refuse if the subject is still used, otherwise delete it.
                 try (var ps = db.conn.prepareStatement(
                         "SELECT COUNT(*) FROM grade_components WHERE subject = ?")) {
                     ps.setString(1, subject);
@@ -316,6 +335,7 @@ public class ApiServer {
                 String rest = path.substring("/grades/student/".length());
                 if (rest.endsWith("/components")) {
                     String id = rest.substring(0, rest.length() - "/components".length());
+                    requireSelfOrStaff(me, id);
                     String subject = q.get("subject");
                     List<Map<String, Object>> out = new ArrayList<>();
                     for (GradeComponent c : school.listComponents(me, id, subject)) out.add(componentToMap(c));
@@ -323,10 +343,12 @@ public class ApiServer {
                 }
                 if (rest.endsWith("/rank")) {
                     String id = rest.substring(0, rest.length() - "/rank".length());
+                    requireSelfOrStaff(me, id);
                     Optional<StudentRank> rank = school.rankOf(me, id);
                     if (rank.isEmpty()) throw new ApiException(404, "No grades yet for this student.");
                     json(ex, 200, rankToMap(rank.get())); return;
                 }
+                requireSelfOrStaff(me, rest);
                 List<Map<String, Object>> out = new ArrayList<>();
                 for (SubjectGrade g : school.getAllSubjectGrades(me, rest)) out.add(subjectGradeToMap(g));
                 json(ex, 200, out); return;
@@ -355,19 +377,17 @@ public class ApiServer {
                 Double w = numOpt(b, "weight");
                 String comment = str(b, "comment");
                 mutate(() -> {
+                    double weight;
                     if (w != null) {
-                        school.updateComponent(me, str(b, "studentId"), str(b, "subject"),
-                                str(b, "componentName"), num(b, "score"), w, comment);
+                        weight = w;
                     } else {
-                        List<GradeComponent> existing = school.listComponents(me,
-                                str(b, "studentId"), str(b, "subject"));
-                        double keep = 1.0;
-                        for (GradeComponent c : existing)
-                            if (c.componentName().equalsIgnoreCase(str(b, "componentName")))
-                                keep = c.weight();
-                        school.updateComponent(me, str(b, "studentId"), str(b, "subject"),
-                                str(b, "componentName"), num(b, "score"), keep, comment);
+                        weight = 1.0;
+                        // keep the old weight when none was sent
+                        for (GradeComponent c : school.listComponents(me, str(b, "studentId"), str(b, "subject")))
+                            if (c.componentName().equalsIgnoreCase(str(b, "componentName"))) weight = c.weight();
                     }
+                    school.updateComponent(me, str(b, "studentId"), str(b, "subject"),
+                            str(b, "componentName"), num(b, "score"), weight, comment);
                 });
                 ok(ex); return;
             }
@@ -386,6 +406,7 @@ public class ApiServer {
             // ---- reports ----
             if (method.equals("GET") && path.startsWith("/transcript/")) {
                 String id = path.substring("/transcript/".length());
+                requireSelfOrStaff(me, id);
                 String text = school.transcript(me, id);
                 send(ex, 200, "text/plain; charset=utf-8", text.getBytes(StandardCharsets.UTF_8));
                 return;
@@ -399,6 +420,7 @@ public class ApiServer {
                 int n;
                 try { n = Math.max(1, Math.min(100, Integer.parseInt(path.substring("/top/".length())))); }
                 catch (NumberFormatException e) { n = 10; }
+                if (me.is("STUDENT")) n = Math.min(n, 5); // students only ever see the top 5
                 List<Map<String, Object>> out = new ArrayList<>();
                 for (StudentRank r : school.topN(me, n)) out.add(rankToMap(r));
                 json(ex, 200, out); return;
@@ -420,6 +442,7 @@ public class ApiServer {
             }
             if (method.equals("GET") && path.startsWith("/stats/student/")) {
                 String id = path.substring("/stats/student/".length());
+                requireSelfOrStaff(me, id);
                 List<Map<String, Object>> out = new ArrayList<>();
                 for (SubjectGrade g : school.getAllSubjectGrades(me, id)) out.add(subjectGradeToMap(g));
                 json(ex, 200, out); return;
@@ -453,6 +476,9 @@ public class ApiServer {
                 return;
             }
 
+            // ---- classroom: attendance, announcements, assignments, submissions ----
+            if (ClassroomApi.handle(ex, method, path, q, me)) return;
+
             throw new ApiException(404, "Not found.");
         } catch (ApiException e) {
             code = e.status;
@@ -477,6 +503,13 @@ public class ApiServer {
         }
     }
 
+    static int count(String sql) {
+        try (var st = db.conn.createStatement(); var rs = st.executeQuery(sql)) {
+            rs.next();
+            return rs.getInt(1);
+        } catch (SQLException e) { throw Database.wrap(e); }
+    }
+
     // ================================================================
     //  Login + rate limit
     // ================================================================
@@ -496,7 +529,9 @@ public class ApiServer {
                 byte[] raw = new byte[32];
                 RANDOM.nextBytes(raw);
                 String tok = Base64.getUrlEncoder().withoutPadding().encodeToString(raw);
-                sessions.put(tok, new Session(r.user().id(), System.currentTimeMillis() + SESSION_MS));
+                long now = System.currentTimeMillis();
+                sessions.values().removeIf(s -> s.expires() < now); // forget expired sessions
+                sessions.put(tok, new Session(r.user().id(), now + SESSION_MS));
                 Map<String, Object> out = new LinkedHashMap<>();
                 out.put("status", "OK");
                 out.put("token", tok);
@@ -632,8 +667,8 @@ public class ApiServer {
     }
 
     static Map<String, Object> body(HttpExchange ex) throws IOException {
-        byte[] raw = ex.getRequestBody().readNBytes(65_537);
-        if (raw.length > 65_536) throw new ApiException(413, "Request too large.");
+        byte[] raw = ex.getRequestBody().readNBytes(262_145);
+        if (raw.length > 262_144) throw new ApiException(413, "Request too large.");
         if (raw.length == 0) return new HashMap<>();
         return Json.parseObject(new String(raw, StandardCharsets.UTF_8));
     }
@@ -646,7 +681,7 @@ public class ApiServer {
         Object v = b.get(key);
         if (v instanceof Number n) return n.doubleValue();
         if (v instanceof String s) {
-            try { return Double.parseDouble(s); } catch (NumberFormatException ignored) {}
+            try { return Double.parseDouble(s.trim()); } catch (NumberFormatException ignored) {}
         }
         throw new IllegalArgumentException(key + " must be a number.");
     }
@@ -655,7 +690,8 @@ public class ApiServer {
         if (v == null) return null;
         if (v instanceof Number n) return n.doubleValue();
         if (v instanceof String s) {
-            try { return Double.parseDouble(s); } catch (NumberFormatException ignored) { return null; }
+            if (s.isBlank()) return null;
+            try { return Double.parseDouble(s.trim()); } catch (NumberFormatException ignored) { return null; }
         }
         return null;
     }
@@ -688,7 +724,7 @@ public class ApiServer {
     }
 
     // ================================================================
-    //  Static file handler — whitelisted extensions, no traversal
+    //  Static file handler: whitelisted extensions, no path tricks
     // ================================================================
     static void handleStatic(HttpExchange ex) throws IOException {
         try {
@@ -733,7 +769,7 @@ public class ApiServer {
     }
 
     // ================================================================
-    //  Tiny JSON
+    //  Tiny JSON (objects, arrays, strings, numbers, booleans, null)
     // ================================================================
     static final class Json {
         private final String s;
@@ -741,34 +777,59 @@ public class ApiServer {
         private Json(String s) { this.s = s; }
 
         static Map<String, Object> parseObject(String text) {
-            Json j = new Json(text);
             try {
-                Map<String, Object> m = new HashMap<>();
+                Json j = new Json(text);
                 j.ws();
-                j.expect('{');
+                Map<String, Object> m = j.object();
                 j.ws();
-                if (j.s.charAt(j.i) == '}') return m;
-                while (true) {
-                    j.ws();
-                    String k = j.string();
-                    j.ws();
-                    j.expect(':');
-                    j.ws();
-                    m.put(k, j.value());
-                    j.ws();
-                    char c = j.s.charAt(j.i++);
-                    if (c == '}') return m;
-                    if (c != ',') throw new IllegalArgumentException();
-                }
+                if (j.i != j.s.length()) throw new IllegalArgumentException();
+                return m;
             } catch (RuntimeException e) {
                 throw new IllegalArgumentException("Invalid JSON request.");
             }
         }
+
         private void ws() { while (i < s.length() && Character.isWhitespace(s.charAt(i))) i++; }
         private void expect(char c) { if (s.charAt(i++) != c) throw new IllegalArgumentException(); }
 
+        private Map<String, Object> object() {
+            Map<String, Object> m = new HashMap<>();
+            expect('{');
+            ws();
+            if (s.charAt(i) == '}') { i++; return m; }
+            while (true) {
+                ws();
+                String k = string();
+                ws();
+                expect(':');
+                m.put(k, value());
+                ws();
+                char c = s.charAt(i++);
+                if (c == '}') return m;
+                if (c != ',') throw new IllegalArgumentException();
+            }
+        }
+
+        private List<Object> array() {
+            List<Object> l = new ArrayList<>();
+            expect('[');
+            ws();
+            if (s.charAt(i) == ']') { i++; return l; }
+            while (true) {
+                l.add(value());
+                ws();
+                char c = s.charAt(i++);
+                if (c == ']') return l;
+                if (c != ',') throw new IllegalArgumentException();
+            }
+        }
+
         private Object value() {
-            if (s.charAt(i) == '"') return string();
+            ws();
+            char c = s.charAt(i);
+            if (c == '"') return string();
+            if (c == '{') return object();
+            if (c == '[') return array();
             if (s.startsWith("true", i))  { i += 4; return Boolean.TRUE; }
             if (s.startsWith("false", i)) { i += 5; return Boolean.FALSE; }
             if (s.startsWith("null", i))  { i += 4; return null; }
@@ -776,6 +837,7 @@ public class ApiServer {
             while (i < s.length() && "+-0123456789.eE".indexOf(s.charAt(i)) >= 0) i++;
             return Double.parseDouble(s.substring(start, i));
         }
+
         private String string() {
             expect('"');
             StringBuilder sb = new StringBuilder();
@@ -795,6 +857,7 @@ public class ApiServer {
                 }
             }
         }
+
         static String write(Object o) {
             StringBuilder sb = new StringBuilder();
             put(sb, o);
