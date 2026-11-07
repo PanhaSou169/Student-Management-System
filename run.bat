@@ -1,20 +1,17 @@
 @echo off
-setlocal
-cd /d "%~dp0"
-
-set "SQLITE_JAR=%~dp0sqlite-jdbc-3.53.4.0.jar"
-if not exist "%SQLITE_JAR%" (
-    echo SQLite JDBC driver not found: "%SQLITE_JAR%"
-    exit /b 1
+rem Start the Student Management System (Windows). Put mysql-connector-j-*.jar in this folder.
+set JAR=
+for %%f in (mysql-connector-j*.jar) do set JAR=%%f
+if "%JAR%"=="" (
+  echo Put mysql-connector-j-x.y.z.jar in this folder first.
+  pause
+  exit /b 1
 )
-
-set "MYSQL_JAR=%~dp0..\lib\mysql-connector-j-8.4.0.jar"
-if not exist "%MYSQL_JAR%" (
-    echo MySQL Connector/J not found: "%MYSQL_JAR%"
-    exit /b 1
+javac -cp ".;%JAR%" *.java
+if errorlevel 1 (
+  pause
+  exit /b 1
 )
-
-javac -cp "%SQLITE_JAR%;%MYSQL_JAR%" StudentManagementSystem.java
-if errorlevel 1 exit /b 1
-
-java -cp ".;%SQLITE_JAR%;%MYSQL_JAR%" StudentManagementSystem
+echo Open http://localhost:8080 in your browser
+java -cp ".;%JAR%" ApiServer
+pause
