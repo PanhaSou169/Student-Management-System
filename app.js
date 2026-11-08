@@ -24,10 +24,7 @@ const enc = encodeURIComponent;
 function esc(v) {
   return String(v ?? "").replace(
     /[&<>"']/g,
-    (c) =>
-      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[
-        c
-      ],
+    (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c],
   );
 }
 
@@ -54,9 +51,7 @@ function openModal(html, actions, wide = false) {
   const bar = $("#modal-actions");
   for (const a of actions) {
     const b = document.createElement("button");
-    b.className =
-      "btn " +
-      (a.primary ? "btn-primary" : a.danger ? "btn-danger" : "btn-secondary");
+    b.className = "btn " + (a.primary ? "btn-primary" : a.danger ? "btn-danger" : "btn-secondary");
     b.textContent = a.label;
     b.onclick = a.onClick;
     bar.append(b);
@@ -80,8 +75,7 @@ function invalidate() {
 
 function pwProblem(pw) {
   if (!pw || pw.length < 8) return "Password must be at least 8 characters.";
-  if (!/[A-Za-z]/.test(pw) || !/[0-9]/.test(pw))
-    return "Password needs at least one letter and one digit.";
+  if (!/[A-Za-z]/.test(pw) || !/[0-9]/.test(pw)) return "Password needs at least one letter and one digit.";
   return null;
 }
 
@@ -97,9 +91,7 @@ async function api(method, path, body) {
   try {
     res = await fetch("/api" + path, opt);
   } catch (e) {
-    throw new Error(
-      "Cannot reach the server. Is ApiServer running? Open http://localhost:8080",
-    );
+    throw new Error("Cannot reach the server. Is ApiServer running? Open http://localhost:8080");
   }
   const isJson = (res.headers.get("Content-Type") || "").includes("json");
   const data = isJson ? await res.json() : await res.text();
@@ -123,9 +115,7 @@ const qs = (o) =>
 
 /* download a protected file (needs the Authorization header, so not a plain link) */
 async function downloadFile(path, filename) {
-  const res = await fetch("/api" + path, {
-    headers: { Authorization: "Bearer " + token },
-  });
+  const res = await fetch("/api" + path, { headers: { Authorization: "Bearer " + token } });
   if (!res.ok) {
     let msg = "Download failed";
     try {
@@ -144,8 +134,7 @@ async function downloadFile(path, filename) {
 }
 
 /* ---------------- small rules (display only; the server enforces everything) ---------------- */
-const gpaPoints = (letter) =>
-  ({ A: 4, B: 3, C: 2, D: 1, E: 0.5, F: 0 })[letter] || 0;
+const gpaPoints = (letter) => ({ A: 4, B: 3, C: 2, D: 1, E: 0.5, F: 0 })[letter] || 0;
 function creditGpa(grades) {
   let c = 0,
     p = 0;
@@ -162,10 +151,7 @@ function canGrade(subject) {
   return (
     currentUser.role === "TEACHER" &&
     !!currentUser.subject &&
-    currentUser.subject.toLowerCase() ===
-      String(subject || "")
-        .trim()
-        .toLowerCase()
+    currentUser.subject.toLowerCase() === String(subject || "").trim().toLowerCase()
   );
 }
 
@@ -224,9 +210,7 @@ function initDashboard() {
   $("#user-name").textContent = currentUser.name;
   $("#user-role").textContent = currentUser.role;
   $("#user-role").className = "badge badge-" + currentUser.role.toLowerCase();
-  $("#user-avatar").textContent = (currentUser.name || "?")
-    .charAt(0)
-    .toUpperCase();
+  $("#user-avatar").textContent = (currentUser.name || "?").charAt(0).toUpperCase();
   currentView = "dashboard";
   renderNav();
   render();
@@ -298,14 +282,10 @@ async function render() {
   const my = ++renderToken;
   const el = $("#content");
   el.innerHTML = '<div class="empty">Loading…</div>';
-  const item = navFor(currentUser.role).find((n) => n.id === currentView) || {
-    label: "Dashboard",
-  };
+  const item = navFor(currentUser.role).find((n) => n.id === currentView) || { label: "Dashboard" };
   $("#page-title").textContent = item.label;
   $("#brand-sub").textContent = item.label;
-  $$(".nav-item[data-view]").forEach((n) =>
-    n.classList.toggle("active", n.dataset.view === currentView),
-  );
+  $$(".nav-item[data-view]").forEach((n) => n.classList.toggle("active", n.dataset.view === currentView));
   try {
     if (!views[currentView]) {
       el.innerHTML = '<div class="empty">Unknown view.</div>';
@@ -314,8 +294,7 @@ async function render() {
     await views[currentView](el);
   } catch (err) {
     console.error(err);
-    if (my === renderToken)
-      el.innerHTML = `<div class="empty">⚠ ${esc(err.message)}</div>`;
+    if (my === renderToken) el.innerHTML = `<div class="empty">⚠ ${esc(err.message)}</div>`;
   }
 }
 
@@ -328,14 +307,7 @@ function leaderTable(rows) {
     <thead><tr><th>#</th><th>Student</th><th>Average</th><th>GPA</th><th>Subjects</th></tr></thead>
     <tbody>${rows
       .map((r) => {
-        const c =
-          r.rank === 1
-            ? "gold"
-            : r.rank === 2
-              ? "silver"
-              : r.rank === 3
-                ? "bronze"
-                : "";
+        const c = r.rank === 1 ? "gold" : r.rank === 2 ? "silver" : r.rank === 3 ? "bronze" : "";
         return `<tr>
         <td><span class="rank-badge ${c}">${r.rank}</span></td>
         <td><strong>${esc(r.name)}</strong><br><span class="subtitle">${esc(r.studentId)}</span></td>
@@ -447,11 +419,7 @@ views.dashboard = async function (el) {
   const me = currentUser;
 
   if (me.role === "ADMIN") {
-    const [sum, top, stats] = await Promise.all([
-      get("/summary"),
-      get("/top/5"),
-      get("/stats"),
-    ]);
+    const [sum, top, stats] = await Promise.all([get("/summary"), get("/top/5"), get("/stats")]);
     el.innerHTML = `
       <div class="grid grid-4">
         ${statCard("Students", sum.students, "registered")}
@@ -489,9 +457,7 @@ views.dashboard = async function (el) {
     get("/top/5"),
     get("/grades/student/" + enc(me.id) + "/rank").catch(() => null),
   ]);
-  const avg = grades.length
-    ? grades.reduce((a, g) => a + Number(g.score), 0) / grades.length
-    : 0;
+  const avg = grades.length ? grades.reduce((a, g) => a + Number(g.score), 0) / grades.length : 0;
   el.innerHTML = `
     <div class="grid grid-4">
       ${statCard("My GPA", creditGpa(grades).toFixed(2), "credit-weighted")}
@@ -539,29 +505,15 @@ views.users = async function (el) {
           .join("")}</tbody>
       </table>`)
       : '<div class="empty">No users.</div>';
-    el.querySelectorAll("[data-edit]").forEach(
-      (b) => (b.onclick = () => editUser(b.dataset.edit)),
-    );
-    el.querySelectorAll("[data-del]").forEach(
-      (b) => (b.onclick = () => deleteUser(b.dataset.del)),
-    );
-    el.querySelectorAll("[data-reset]").forEach(
-      (b) => (b.onclick = () => resetPassword(b.dataset.reset)),
-    );
+    el.querySelectorAll("[data-edit]").forEach((b) => (b.onclick = () => editUser(b.dataset.edit)));
+    el.querySelectorAll("[data-del]").forEach((b) => (b.onclick = () => deleteUser(b.dataset.del)));
+    el.querySelectorAll("[data-reset]").forEach((b) => (b.onclick = () => resetPassword(b.dataset.reset)));
   };
   renderTable(users);
 
   el.querySelector("#user-search").oninput = (e) => {
     const q = e.target.value.toLowerCase().trim();
-    renderTable(
-      !q
-        ? users
-        : users.filter(
-            (u) =>
-              u.id.toLowerCase().includes(q) ||
-              u.name.toLowerCase().includes(q),
-          ),
-    );
+    renderTable(!q ? users : users.filter((u) => u.id.toLowerCase().includes(q) || u.name.toLowerCase().includes(q)));
   };
   el.querySelector("#user-add").onclick = addUser;
 };
@@ -590,12 +542,10 @@ function addUser() {
           try {
             const role = $("#f-role").value;
             const name = $("#f-name").value.trim();
-            const subject =
-              role === "TEACHER" ? $("#f-subject").value.trim() : "";
+            const subject = role === "TEACHER" ? $("#f-subject").value.trim() : "";
             const password = $("#f-password").value;
             if (!name) throw new Error("Name is required");
-            if (role === "TEACHER" && !subject)
-              throw new Error("Teachers must have a subject");
+            if (role === "TEACHER" && !subject) throw new Error("Teachers must have a subject");
             const bad = pwProblem(password);
             if (bad) throw new Error(bad);
             const res = await post("/users", { role, name, subject, password });
@@ -638,8 +588,7 @@ async function editUser(id) {
           try {
             const name = $("#e-name").value.trim();
             if (!name) throw new Error("Name is required");
-            const subject =
-              u.role === "TEACHER" ? $("#e-subject").value.trim() : "";
+            const subject = u.role === "TEACHER" ? $("#e-subject").value.trim() : "";
             await post("/users/update", { id: u.id, name, subject });
             invalidate();
             closeModal();
@@ -655,8 +604,7 @@ async function editUser(id) {
 }
 
 async function deleteUser(id) {
-  if (id === currentUser.id)
-    return showAlert("You cannot delete your own account", true);
+  if (id === currentUser.id) return showAlert("You cannot delete your own account", true);
   if (!confirm(`Delete user ${id}? This also deletes their grades.`)) return;
   try {
     await post("/users/delete", { id });
@@ -683,8 +631,7 @@ function resetPassword(id) {
         primary: true,
         onClick: async () => {
           const pw = $("#r-pw").value;
-          if (pw !== $("#r-pw2").value)
-            return showAlert("Passwords do not match", true);
+          if (pw !== $("#r-pw2").value) return showAlert("Passwords do not match", true);
           const bad = pwProblem(pw);
           if (bad) return showAlert(bad, true);
           try {
@@ -722,9 +669,7 @@ views.subjects = async function (el) {
           )
           .join("")}</tbody></table>`)
     : '<div class="empty">No subjects yet.</div>';
-  el.querySelectorAll("[data-edit]").forEach(
-    (b) => (b.onclick = () => editSubject(b.dataset.edit)),
-  );
+  el.querySelectorAll("[data-edit]").forEach((b) => (b.onclick = () => editSubject(b.dataset.edit)));
   el.querySelector("#subj-add").onclick = () => editSubject("");
 
   function editSubject(name) {
@@ -746,8 +691,7 @@ views.subjects = async function (el) {
               const subjName = $("#s-name").value.trim();
               const credits = parseFloat($("#s-credits").value);
               if (!subjName) throw new Error("Name is required");
-              if (!(credits > 0 && credits <= 20))
-                throw new Error("Credits must be 0–20");
+              if (!(credits > 0 && credits <= 20)) throw new Error("Credits must be 0–20");
               await post("/subjects", { name: subjName, credits });
               invalidate();
               closeModal();
@@ -787,29 +731,17 @@ views.students = async function (el) {
           )
           .join("")
       : '<div class="empty">No students found.</div>';
-    grid
-      .querySelectorAll("[data-card]")
-      .forEach((c) => (c.onclick = () => openStudent(c.dataset.card)));
+    grid.querySelectorAll("[data-card]").forEach((c) => (c.onclick = () => openStudent(c.dataset.card)));
   };
   renderGrid(students);
   el.querySelector("#stud-search").oninput = (e) => {
     const q = e.target.value.toLowerCase().trim();
-    renderGrid(
-      !q
-        ? students
-        : students.filter(
-            (s) =>
-              s.id.toLowerCase().includes(q) ||
-              s.name.toLowerCase().includes(q),
-          ),
-    );
+    renderGrid(!q ? students : students.filter((s) => s.id.toLowerCase().includes(q) || s.name.toLowerCase().includes(q)));
   };
   const exp = el.querySelector("#stud-export");
   if (exp)
     exp.onclick = () =>
-      downloadFile("/export/csv", "export_grades.csv").catch((err) =>
-        showAlert(err.message, true),
-      );
+      downloadFile("/export/csv", "export_grades.csv").catch((err) => showAlert(err.message, true));
 };
 
 async function openStudent(id) {
@@ -826,9 +758,7 @@ async function openStudent(id) {
     openModal(
       `<h2>${esc(student ? student.name : id)} <span class="subtitle">${esc(id)}</span></h2>
       <p class="subtitle">${
-        rank
-          ? `Rank #${rank.rank} · GPA ${Number(rank.gpa).toFixed(2)} · avg ${Number(rank.average).toFixed(1)}`
-          : "No grades yet"
+        rank ? `Rank #${rank.rank} · GPA ${Number(rank.gpa).toFixed(2)} · avg ${Number(rank.average).toFixed(1)}` : "No grades yet"
       }</p>
       <h3 style="font-size:14px;margin:16px 0 8px">Subject grades</h3>
       ${subjectGradeTable(grades)}
@@ -839,13 +769,7 @@ async function openStudent(id) {
       [
         { label: "Close", onClick: closeModal },
         ...(me.role === "ADMIN" || (me.role === "TEACHER" && me.subject)
-          ? [
-              {
-                label: "+ Add component",
-                primary: true,
-                onClick: () => addComponent(id),
-              },
-            ]
+          ? [{ label: "+ Add component", primary: true, onClick: () => addComponent(id) }]
           : []),
       ],
       true,
@@ -853,15 +777,13 @@ async function openStudent(id) {
 
     const mc = $("#modal-content");
     mc.querySelectorAll("[data-edit]").forEach(
-      (b) =>
-        (b.onclick = () => editComponent(id, comps[Number(b.dataset.edit)])),
+      (b) => (b.onclick = () => editComponent(id, comps[Number(b.dataset.edit)])),
     );
     mc.querySelectorAll("[data-del]").forEach(
       (b) =>
         (b.onclick = async () => {
           const c = comps[Number(b.dataset.del)];
-          if (!c || !confirm(`Delete ${c.subject} / ${c.componentName}?`))
-            return;
+          if (!c || !confirm(`Delete ${c.subject} / ${c.componentName}?`)) return;
           try {
             await post("/grades/component/delete", {
               studentId: id,
@@ -881,8 +803,7 @@ async function openStudent(id) {
 }
 
 function addComponent(studentId) {
-  const lockedSubject =
-    currentUser.role === "TEACHER" ? currentUser.subject : null;
+  const lockedSubject = currentUser.role === "TEACHER" ? currentUser.subject : null;
   openModal(
     `<h2>Add component</h2>
     <p class="subtitle">Student ${esc(studentId)}</p>
@@ -913,12 +834,9 @@ function addComponent(studentId) {
             const componentName = $("#c-name").value.trim();
             const score = parseFloat($("#c-score").value);
             const weight = parseFloat($("#c-weight").value);
-            if (!subject || !componentName)
-              throw new Error("Subject and name required");
-            if (!(score >= 0 && score <= 100))
-              throw new Error("Score must be 0–100");
-            if (!(weight > 0 && weight <= 100))
-              throw new Error("Weight must be 0–100");
+            if (!subject || !componentName) throw new Error("Subject and name required");
+            if (!(score >= 0 && score <= 100)) throw new Error("Score must be 0–100");
+            if (!(weight > 0 && weight <= 100)) throw new Error("Weight must be 0–100");
             await post("/grades/component/add", {
               studentId,
               subject,
@@ -962,10 +880,8 @@ function editComponent(studentId, comp) {
           try {
             const score = parseFloat($("#e-score").value);
             const weight = parseFloat($("#e-weight").value);
-            if (!(score >= 0 && score <= 100))
-              throw new Error("Score must be 0–100");
-            if (!(weight > 0 && weight <= 100))
-              throw new Error("Weight must be 0–100");
+            if (!(score >= 0 && score <= 100)) throw new Error("Score must be 0–100");
+            if (!(weight > 0 && weight <= 100)) throw new Error("Weight must be 0–100");
             await post("/grades/component/update", {
               studentId,
               subject: comp.subject,
@@ -1022,9 +938,7 @@ views.audit = async function (el) {
   el.innerHTML = `<div class="card">
     <h3>📋 Audit log</h3><p class="subtitle">Most recent ${lines.length} entries (newest first)</p>
     <div style="margin-top:12px">${
-      lines.length
-        ? `<pre class="transcript">${esc(lines.join("\n"))}</pre>`
-        : '<div class="empty">No entries.</div>'
+      lines.length ? `<pre class="transcript">${esc(lines.join("\n"))}</pre>` : '<div class="empty">No entries.</div>'
     }</div></div>`;
 };
 
@@ -1082,14 +996,10 @@ views.settings = async function (el) {
   el.querySelector("#pw-save").onclick = async () => {
     try {
       const nw = $("#pw-new").value;
-      if (nw !== $("#pw-confirm").value)
-        throw new Error("Passwords do not match");
+      if (nw !== $("#pw-confirm").value) throw new Error("Passwords do not match");
       const bad = pwProblem(nw);
       if (bad) throw new Error(bad);
-      await post("/users/change-password", {
-        oldPassword: $("#pw-old").value,
-        newPassword: nw,
-      });
+      await post("/users/change-password", { oldPassword: $("#pw-old").value, newPassword: nw });
       showAlert("Password updated");
       $("#pw-old").value = $("#pw-new").value = $("#pw-confirm").value = "";
     } catch (err) {
@@ -1097,11 +1007,7 @@ views.settings = async function (el) {
     }
   };
   const bk = el.querySelector("#backup-btn");
-  if (bk)
-    bk.onclick = () =>
-      downloadFile("/export/backup", "backup.sql").catch((err) =>
-        showAlert(err.message, true),
-      );
+  if (bk) bk.onclick = () => downloadFile("/export/backup", "backup.sql").catch((err) => showAlert(err.message, true));
 };
 
 /* ---------------- start-up: check server + restore session ---------------- */
@@ -1112,10 +1018,7 @@ async function startup() {
     box.textContent = msg;
   };
   if (location.protocol === "file:") {
-    say(
-      "⚠ Open this app at http://localhost:8080 (start ApiServer first), not from the file.",
-      false,
-    );
+    say("⚠ Open this app at http://localhost:8080 (start ApiServer first), not from the file.", false);
     return;
   }
   try {
@@ -1130,8 +1033,9 @@ async function startup() {
         sessionStorage.removeItem("sms_token");
       }
     }
-    await get("/health");
-    say("✓ Server connected", true);
+    const h = await get("/health");
+    if (h.status === "OK") say("✓ Server connected", true);
+    else say("⚠ " + (h.message || "Server is starting… refresh in a few seconds."), false);
   } catch (e) {
     say("⚠ " + e.message, false);
   }
