@@ -108,11 +108,16 @@ async function api(method, path, body) {
       logout();
       toast("Session expired. Please sign in again.", "error");
     }
-    if (!isJson && [404, 502, 503, 504].includes(res.status))
-      throw new Error(
-        `The website cannot reach the backend (HTTP ${res.status}). ` +
-          "Put your real Railway link in config.js (SMS_API_BASE), redeploy, and check that <link>/api/health opens.",
-      );
+    if (!isJson && [404, 502, 503, 504].includes(res.status)) {
+      const where = (API_BASE || location.origin) + "/api" + path;
+      const said = String(data).replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim().slice(0, 160);
+      const hint = !API_BASE && location.hostname !== "localhost" && location.hostname !== "127.0.0.1"
+        ? "config.js is EMPTY, so this website is calling itself. Put your Railway link in config.js (SMS_API_BASE) and redeploy."
+        : API_BASE
+          ? "The backend answered with an error. Open " + API_BASE + "/api/health in the browser and read what it shows."
+          : "Is the Java server running?";
+      throw new Error(`HTTP ${res.status} from ${where} — "${said || "no details"}". ${hint}`);
+    }
     throw new Error((data && data.message) || "Error " + res.status);
   }
   return data;
