@@ -77,16 +77,33 @@ public class ApiServer {
         Clock clock = Clock.systemDefaultZone();
         String dbUser = env("SMS_DB_USER", Config.DB_USER);
         String dbPassword = System.getenv("SMS_DB_PASSWORD");
-        if (dbPassword == null) dbPassword = readSecret("MySQL password for user '" + dbUser + "': ");
+        if (dbPassword == null) {
+            if (ONLINE) {
+                System.err.println("ERROR: the SMS_DB_PASSWORD variable is not set on your host.");
+                System.exit(1);
+            }
+            dbPassword = readSecret("MySQL password for user '" + dbUser + "': ");
+        }
         Path dataDir = Path.of(env("SMS_DATA_DIR", "data"));
 
-        try {
-            db = new Database(env("SMS_DB_URL", Config.DB_SERVER_URL),
-                    dbUser, dbPassword, env("SMS_DB_NAME", Config.DB_NAME));
-        } catch (SQLException e) {
-            System.out.println("Cannot connect to MySQL: " + e.getMessage());
-            System.out.println("Check: MySQL is running, user/password are right, and the connector jar is on the classpath.");
-            return;
+        // On a host, MySQL may still be starting: try up to 10 times (30 seconds).
+        String dbUrl = env("SMS_DB_URL", Config.DB_SERVER_URL);
+        String dbName = env("SMS_DB_NAME", Config.DB_NAME);
+        for (int attempt = 1; attempt <= 10 && db == null; attempt++) {
+            try {
+                db = new Database(dbUrl, dbUser, dbPassword, dbName);
+            } catch (SQLException e) {
+                System.err.println("MySQL not ready (try " + attempt + "/10) at " + dbUrl + dbName
+                        + " as '" + dbUser + "': " + e.getMessage());
+                if (!ONLINE) break;
+                Thread.sleep(3000);
+            }
+        }
+        if (db == null) {
+            System.err.println("ERROR: cannot connect to MySQL.");
+            System.err.println("Check: MySQL is running, SMS_DB_URL ends with '/', user/password are right, "
+                    + "and the connector jar is on the classpath.");
+            System.exit(1);
         }
 
         csvStore = new CsvStore(dataDir);
@@ -111,7 +128,14 @@ public class ApiServer {
                 }
             }
         }
-        if (!auth.hasAdmin()) firstRunSetup();
+        if (!auth.hasAdmin()) {
+            if (ONLINE && System.getenv("SMS_ADMIN_PASSWORD") == null) {
+                System.err.println("ERROR: no admin account exists yet. Set the SMS_ADMIN_PASSWORD variable "
+                        + "(8+ characters, a letter and a digit) on your host, then redeploy.");
+                System.exit(1);
+            }
+            firstRunSetup();
+        }
         syncCsv();
 
         InetSocketAddress address = ONLINE
@@ -129,13 +153,20 @@ public class ApiServer {
             try { db.close(); } catch (Exception ignored) {}
         }));
 
-        System.out.println("Server running -> http://localhost:" + PORT + "   (Ctrl+C to stop)");
+        System.out.println("Server running on port " + PORT + (ONLINE ? " (all addresses)" : " -> http://localhost:" + PORT) + "   (Ctrl+C to stop)");
     }
 
     static void firstRunSetup() {
         String envPassword = System.getenv("SMS_ADMIN_PASSWORD");
         if (envPassword != null) {
-            String id = auth.createUser("setup", "ADMIN", env("SMS_ADMIN_NAME", "Administrator"), null, envPassword);
+            String id;
+            try {
+                id = auth.createUser("setup", "ADMIN", env("SMS_ADMIN_NAME", "Administrator"), null, envPassword);
+            } catch (IllegalArgumentException e) {
+                System.err.println("ERROR: SMS_ADMIN_PASSWORD rejected: " + e.getMessage());
+                System.exit(1);
+                return;
+            }
             System.out.println("Admin created. Login ID: " + id
                     + " (now remove SMS_ADMIN_PASSWORD from the host settings)");
             syncCsv();
