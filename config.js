@@ -1,14 +1,13 @@
 /* ================================================================
-   config.js — tell the website where the backend (Java server) is.
+   config.js — OPTIONAL.
 
-   STEP 1. Open your Railway link + /api/health in the browser.
-           It must show  {"status":"OK",...}
-   STEP 2. Replace the link below with your Railway link:
-           - keep the quotes
-           - start with https://
-           - NO slash at the end
-   STEP 3. Redeploy (push to GitHub). Then hard refresh: Ctrl+Shift+R
+   You do NOT have to edit this file. If the website cannot find the
+   backend, the login page shows a "Backend link" box: paste your
+   Railway link there once and press Connect. It is remembered in
+   your browser.
 
-   (If you open the site from the Railway link itself, leave it as "".)
+   Only if you want the link built into the site, put it here:
+       window.SMS_API_BASE = "https://your-app.up.railway.app";
+   (https://, no slash at the end). Leave "" to use the Connect box.
    ================================================================ */
-window.SMS_API_BASE = "https://PASTE-YOUR-RAILWAY-LINK-HERE";
+window.SMS_API_BASE = "";
