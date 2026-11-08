@@ -5,32 +5,47 @@ cd /d "%~dp0"
 set "PORT=%~1"
 if not defined PORT set "PORT=8080"
 
+where java >nul 2>nul
+if errorlevel 1 (
+    echo ERROR: Java was not found. Install a JDK and add its bin folder to PATH.
+    pause
+    exit /b 1
+)
+where javac >nul 2>nul
+if errorlevel 1 (
+    echo ERROR: javac was not found. Install a JDK and add its bin folder to PATH.
+    pause
+    exit /b 1
+)
+
 set "MYSQL_JAR=%~dp0..\lib\mysql-connector-j-8.4.0.jar"
 if not exist "%MYSQL_JAR%" (
-    echo MySQL Connector/J not found: "%MYSQL_JAR%"
+    echo ERROR: MySQL Connector/J was not found:
+    echo "%MYSQL_JAR%"
+    echo Make sure the project lib folder contains mysql-connector-j-8.4.0.jar.
     pause
     exit /b 1
 )
 
-javac -cp ".;%MYSQL_JAR%" StudentManagementSystem.java ApiServer.java
+javac -cp ".;%MYSQL_JAR%" StudentManagementSystem.java ApiServer.java ClassroomApi.java ClassroomService.java
 if errorlevel 1 (
+    echo.
+    echo ERROR: The project did not compile. Read the javac messages above.
     pause
     exit /b 1
 )
 
-start "Student Management API" /D "%~dp0" java -cp ".;%MYSQL_JAR%" ApiServer %PORT%
-
-powershell -NoProfile -Command "$url = 'http://localhost:%PORT%/'; $deadline = (Get-Date).AddSeconds(90); do { try { $response = Invoke-WebRequest -UseBasicParsing -Uri $url -TimeoutSec 2; if ($response.StatusCode -eq 200) { exit 0 } } catch { }; Start-Sleep -Seconds 1 } while ((Get-Date) -lt $deadline); exit 1"
-if errorlevel 1 (
-    echo The server did not become ready. Check the Student Management API window for MySQL or setup errors.
+set "SMS_LOCAL_RUN=true"
+set "SMS_OPEN_BROWSER=true"
+echo Enter your MySQL password when prompted. The browser opens after database setup succeeds.
+echo Keep this terminal open while using the app. Press Ctrl+C to stop the server.
+java -cp ".;%MYSQL_JAR%" ApiServer %PORT%
+set "SERVER_EXIT=%ERRORLEVEL%"
+if not "%SERVER_EXIT%"=="0" (
+    echo.
+    echo ERROR: The server stopped with exit code %SERVER_EXIT%.
+    echo Check the error above. Common causes are a wrong MySQL password,
+    echo MySQL not running, or port %PORT% already being in use.
     pause
-    exit /b 1
-)
-
-set "EDGE=%ProgramFiles(x86)%\Microsoft\Edge\Application\msedge.exe"
-if not exist "%EDGE%" set "EDGE=%ProgramFiles%\Microsoft\Edge\Application\msedge.exe"
-if exist "%EDGE%" (
-    start "" "%EDGE%" "http://localhost:%PORT%/"
-) else (
-    start "" "http://localhost:%PORT%/"
+    exit /b %SERVER_EXIT%
 )
