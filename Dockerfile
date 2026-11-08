@@ -12,5 +12,6 @@ COPY *.java *.html *.js ./
 
 RUN javac -cp ".:mysql-connector-j.jar" *.java
 
-# the host sets PORT automatically; ApiServer then listens on all addresses
-CMD ["java", "-cp", ".:mysql-connector-j.jar", "ApiServer"]
+# The host sets PORT automatically; ApiServer then listens on all addresses.
+# Low-memory flags stop small free plans from killing the app (which shows up as a 502).
+CMD ["java", "-XX:+UseSerialGC", "-XX:MaxRAMPercentage=70", "-cp", ".:mysql-connector-j.jar", "ApiServer"]
