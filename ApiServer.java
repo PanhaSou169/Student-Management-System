@@ -36,7 +36,8 @@ public class ApiServer {
     static final String VERSION = "3.0.0-sms";
 
     static final int PORT = Integer.parseInt(env("PORT", "8080"));
-    static final boolean ONLINE = System.getenv("PORT") != null;
+    static final boolean ONLINE = System.getenv("PORT") != null
+            && !"true".equalsIgnoreCase(System.getenv("SMS_LOCAL_RUN"));
     static final boolean LOG_REQUESTS = "true".equalsIgnoreCase(env("SMS_LOG_REQUESTS", "false"));
     static final long SESSION_MS = 8 * 60 * 60 * 1000L;
     static final SecureRandom RANDOM = new SecureRandom();
@@ -103,6 +104,8 @@ public class ApiServer {
             init();
             ready = true;
             System.out.println("Ready. Server running" + (ONLINE ? "." : " -> http://localhost:" + PORT + "   (Ctrl+C to stop)"));
+            if (!ONLINE && "true".equalsIgnoreCase(System.getenv("SMS_OPEN_BROWSER")))
+                openBrowser();
         } catch (Exception e) {
             startupError = e.getMessage() == null ? e.toString() : e.getMessage();
             System.err.println("ERROR: " + startupError);
@@ -112,6 +115,20 @@ public class ApiServer {
             }
             // on a host: stay up so the message is visible at /api/health
             e.printStackTrace();
+        }
+    }
+
+    static void openBrowser() {
+        String url = "http://localhost:" + PORT + "/";
+        if (!java.awt.Desktop.isDesktopSupported()) {
+            System.out.println("Could not open a browser automatically. Open " + url);
+            return;
+        }
+        try {
+            java.awt.Desktop.getDesktop().browse(java.net.URI.create(url));
+        } catch (IOException | UnsupportedOperationException e) {
+            System.err.println("Could not open a browser automatically: " + e.getMessage());
+            System.out.println("Open " + url);
         }
     }
 
