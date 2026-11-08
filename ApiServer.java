@@ -186,6 +186,22 @@ public class ApiServer {
         System.out.println("SQL:       " + dbUrl + dbName);
         System.out.println("CSV files: " + csvStore.directory());
 
+        // Recovery: set SMS_RESET_ADMIN=true together with SMS_ADMIN_PASSWORD to (re)create admin A001
+        // with that password and unlock it. Remove BOTH variables after you have logged in.
+        String resetPw = System.getenv("SMS_ADMIN_PASSWORD");
+        if ("true".equalsIgnoreCase(System.getenv("SMS_RESET_ADMIN")) && resetPw != null && !resetPw.isBlank()) {
+            if (school.find("A001").isPresent()) {
+                auth.resetPassword(new User("SETUP", "Setup", "ADMIN", null), "A001", resetPw);
+                System.out.println("Admin A001: password reset from SMS_ADMIN_PASSWORD and account unlocked. "
+                        + "Now REMOVE SMS_RESET_ADMIN and SMS_ADMIN_PASSWORD from the host settings.");
+            } else {
+                String newId = auth.createUser("setup", "ADMIN", env("SMS_ADMIN_NAME", "Administrator"), null, resetPw);
+                System.out.println("Admin created with ID " + newId + ". "
+                        + "Now REMOVE SMS_RESET_ADMIN and SMS_ADMIN_PASSWORD from the host settings.");
+            }
+            syncCsv();
+        }
+
         if (!auth.hasAdmin() && csvStore.hasData()) {
             if ("true".equalsIgnoreCase(System.getenv("SMS_IMPORT_CSV"))) {
                 try { csvStore.importAll(db); System.out.println("Imported from CSV."); }
@@ -594,7 +610,7 @@ public class ApiServer {
     //  Login + rate limit
     // ================================================================
     static void login(HttpExchange ex) throws IOException {
-        String ip = ex.getRemoteAddress() == null ? "?" : ex.getRemoteAddress().getAddress().getHostAddress();
+        String ip = clientIp(ex);
         if (!allowLogin(ip))
             throw new ApiException(429, "Too many attempts. Try again in a minute.");
 
@@ -621,6 +637,15 @@ public class ApiServer {
             case LOCKED -> error(ex, 423, "Account locked for " + AuthService.lockMinutes() + " minutes.");
             default -> error(ex, 401, "Wrong ID or password.");
         }
+    }
+
+    /** Behind Railway/Vercel every request comes from the proxy, so use the forwarded address. */
+    static String clientIp(HttpExchange ex) {
+        if (ONLINE) {
+            String f = ex.getRequestHeaders().getFirst("X-Forwarded-For");
+            if (f != null && !f.isBlank()) return f.split(",")[0].trim();
+        }
+        return ex.getRemoteAddress() == null ? "?" : ex.getRemoteAddress().getAddress().getHostAddress();
     }
 
     static boolean allowLogin(String ip) {
@@ -725,6 +750,7 @@ public class ApiServer {
         h.set("Access-Control-Allow-Headers", "Authorization, Content-Type");
         h.set("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
         h.set("Access-Control-Expose-Headers", "Content-Disposition");
+        h.set("Access-Control-Max-Age", "86400");
         h.set("Cache-Control", "no-store");
     }
 
