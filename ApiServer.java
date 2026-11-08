@@ -73,39 +73,108 @@ public class ApiServer {
     // ================================================================
     //  Start-up
     // ================================================================
+    /** true when the database is connected and every service is created */
+    static volatile boolean ready = false;
+    /** the reason the server could not start (shown at /api/health so you can read it in the browser) */
+    static volatile String startupError = null;
+
     public static void main(String[] args) throws Exception {
-        Clock clock = Clock.systemDefaultZone();
-        String dbUser = env("SMS_DB_USER", Config.DB_USER);
-        String dbPassword = System.getenv("SMS_DB_PASSWORD");
-        if (dbPassword == null) {
-            if (ONLINE) {
-                System.err.println("ERROR: the SMS_DB_PASSWORD variable is not set on your host.");
+        // 1) Open the web port FIRST. Hosts (Railway, Render ...) then see the app is alive,
+        //    and any startup problem is readable at /api/health instead of a blank "502".
+        InetSocketAddress address = ONLINE
+                ? new InetSocketAddress(PORT)
+                : new InetSocketAddress(InetAddress.getLoopbackAddress(), PORT);
+        HttpServer server = HttpServer.create(address, 0);
+        server.createContext("/api/", ApiServer::handleApi);
+        server.createContext("/", ApiServer::handleStatic);
+        server.setExecutor(Executors.newSingleThreadExecutor()); // one request at a time = safe DB access
+        server.start();
+        System.out.println("Web server listening on port " + PORT
+                + (ONLINE ? " (all addresses)" : "  ->  http://localhost:" + PORT));
+
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            server.stop(0);
+            try { syncCsv(); } catch (Exception ignored) {}
+            try { if (db != null) db.close(); } catch (Exception ignored) {}
+        }));
+
+        // 2) Connect to MySQL and create the services.
+        try {
+            init();
+            ready = true;
+            System.out.println("Ready. Server running" + (ONLINE ? "." : " -> http://localhost:" + PORT + "   (Ctrl+C to stop)"));
+        } catch (Exception e) {
+            startupError = e.getMessage() == null ? e.toString() : e.getMessage();
+            System.err.println("ERROR: " + startupError);
+            if (!ONLINE) {
+                server.stop(0);
                 System.exit(1);
             }
+            // on a host: stay up so the message is visible at /api/health
+            e.printStackTrace();
+        }
+    }
+
+    static String firstNonBlank(String... values) {
+        for (String v : values) if (v != null && !v.isBlank()) return v;
+        return null;
+    }
+
+    static void init() throws Exception {
+        Clock clock = Clock.systemDefaultZone();
+
+        // ---- database settings: SMS_* variables win, then MYSQL_URL / DATABASE_URL, then MYSQLHOST ... ----
+        String dbUrl = firstNonBlank(System.getenv("SMS_DB_URL"));
+        String dbUser = firstNonBlank(System.getenv("SMS_DB_USER"));
+        String dbPassword = System.getenv("SMS_DB_PASSWORD");
+        String dbName = firstNonBlank(System.getenv("SMS_DB_NAME"));
+
+        String mysqlUrl = firstNonBlank(System.getenv("MYSQL_URL"), System.getenv("DATABASE_URL"));
+        if (dbUrl == null && mysqlUrl != null && mysqlUrl.startsWith("mysql://")) {
+            java.net.URI u = java.net.URI.create(mysqlUrl);
+            dbUrl = "jdbc:mysql://" + u.getHost() + ":" + (u.getPort() < 0 ? 3306 : u.getPort()) + "/";
+            if (u.getUserInfo() != null) {
+                String[] ui = u.getUserInfo().split(":", 2);
+                if (dbUser == null) dbUser = URLDecoder.decode(ui[0], StandardCharsets.UTF_8);
+                if (dbPassword == null && ui.length > 1) dbPassword = URLDecoder.decode(ui[1], StandardCharsets.UTF_8);
+            }
+            if (dbName == null && u.getPath() != null && u.getPath().length() > 1) dbName = u.getPath().substring(1);
+        } else if (dbUrl == null && System.getenv("MYSQLHOST") != null) {
+            dbUrl = "jdbc:mysql://" + System.getenv("MYSQLHOST") + ":" + env("MYSQLPORT", "3306") + "/";
+            if (dbUser == null) dbUser = firstNonBlank(System.getenv("MYSQLUSER"));
+            if (dbPassword == null) dbPassword = System.getenv("MYSQLPASSWORD");
+            if (dbName == null) dbName = firstNonBlank(System.getenv("MYSQLDATABASE"));
+        }
+        if (dbUrl == null) dbUrl = Config.DB_SERVER_URL;
+        if (!dbUrl.endsWith("/")) dbUrl += "/";
+        if (dbUser == null) dbUser = Config.DB_USER;
+        if (dbName == null) dbName = Config.DB_NAME;
+
+        if (dbPassword == null) {
+            if (ONLINE)
+                throw new IllegalStateException("No MySQL password. Add the variable MYSQL_URL "
+                        + "(= ${{MySQL.MYSQL_URL}} on Railway) or SMS_DB_PASSWORD to this service.");
             dbPassword = readSecret("MySQL password for user '" + dbUser + "': ");
         }
-        Path dataDir = Path.of(env("SMS_DATA_DIR", "data"));
 
-        // On a host, MySQL may still be starting: try up to 10 times (30 seconds).
-        String dbUrl = env("SMS_DB_URL", Config.DB_SERVER_URL);
-        String dbName = env("SMS_DB_NAME", Config.DB_NAME);
+        // ---- connect (a host's MySQL may still be starting: try up to 10 times) ----
+        SQLException last = null;
         for (int attempt = 1; attempt <= 10 && db == null; attempt++) {
             try {
                 db = new Database(dbUrl, dbUser, dbPassword, dbName);
             } catch (SQLException e) {
+                last = e;
                 System.err.println("MySQL not ready (try " + attempt + "/10) at " + dbUrl + dbName
                         + " as '" + dbUser + "': " + e.getMessage());
                 if (!ONLINE) break;
                 Thread.sleep(3000);
             }
         }
-        if (db == null) {
-            System.err.println("ERROR: cannot connect to MySQL.");
-            System.err.println("Check: MySQL is running, SMS_DB_URL ends with '/', user/password are right, "
-                    + "and the connector jar is on the classpath.");
-            System.exit(1);
-        }
+        if (db == null)
+            throw new IllegalStateException("Cannot connect to MySQL at " + dbUrl + dbName + " as '" + dbUser
+                    + "': " + (last == null ? "unknown error" : last.getMessage()));
 
+        Path dataDir = Path.of(env("SMS_DATA_DIR", "data"));
         csvStore = new CsvStore(dataDir);
         AuditLog audit = new AuditLog(db, clock);
         auth = new AuthService(db, clock, audit);
@@ -113,7 +182,7 @@ public class ApiServer {
         classroom = new ClassroomService(db, clock, audit, school); // creates its tables automatically
 
         System.out.println("API:       " + VERSION);
-        System.out.println("SQL:       " + env("SMS_DB_URL", Config.DB_SERVER_URL) + env("SMS_DB_NAME", Config.DB_NAME));
+        System.out.println("SQL:       " + dbUrl + dbName);
         System.out.println("CSV files: " + csvStore.directory());
 
         if (!auth.hasAdmin() && csvStore.hasData()) {
@@ -129,44 +198,18 @@ public class ApiServer {
             }
         }
         if (!auth.hasAdmin()) {
-            if (ONLINE && System.getenv("SMS_ADMIN_PASSWORD") == null) {
-                System.err.println("ERROR: no admin account exists yet. Set the SMS_ADMIN_PASSWORD variable "
-                        + "(8+ characters, a letter and a digit) on your host, then redeploy.");
-                System.exit(1);
-            }
+            if (ONLINE && System.getenv("SMS_ADMIN_PASSWORD") == null)
+                throw new IllegalStateException("No admin account exists yet. Add the variable SMS_ADMIN_PASSWORD "
+                        + "(8+ characters with a letter and a digit) to this service; the server creates admin A001 from it.");
             firstRunSetup();
         }
         syncCsv();
-
-        InetSocketAddress address = ONLINE
-                ? new InetSocketAddress(PORT)
-                : new InetSocketAddress(InetAddress.getLoopbackAddress(), PORT);
-        HttpServer server = HttpServer.create(address, 0);
-        server.createContext("/api/", ApiServer::handleApi);
-        server.createContext("/", ApiServer::handleStatic);
-        server.setExecutor(Executors.newSingleThreadExecutor()); // one request at a time = safe DB access
-        server.start();
-
-        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-            server.stop(0);
-            try { syncCsv(); } catch (Exception ignored) {}
-            try { db.close(); } catch (Exception ignored) {}
-        }));
-
-        System.out.println("Server running on port " + PORT + (ONLINE ? " (all addresses)" : " -> http://localhost:" + PORT) + "   (Ctrl+C to stop)");
     }
 
     static void firstRunSetup() {
         String envPassword = System.getenv("SMS_ADMIN_PASSWORD");
         if (envPassword != null) {
-            String id;
-            try {
-                id = auth.createUser("setup", "ADMIN", env("SMS_ADMIN_NAME", "Administrator"), null, envPassword);
-            } catch (IllegalArgumentException e) {
-                System.err.println("ERROR: SMS_ADMIN_PASSWORD rejected: " + e.getMessage());
-                System.exit(1);
-                return;
-            }
+            String id = auth.createUser("setup", "ADMIN", env("SMS_ADMIN_NAME", "Administrator"), null, envPassword);
             System.out.println("Admin created. Login ID: " + id
                     + " (now remove SMS_ADMIN_PASSWORD from the host settings)");
             syncCsv();
@@ -238,11 +281,16 @@ public class ApiServer {
             // ---- no login needed ----
             if (method.equals("GET") && path.equals("/health")) {
                 Map<String, Object> m = new LinkedHashMap<>();
-                m.put("status", "OK");
+                m.put("status", ready ? "OK" : startupError != null ? "ERROR" : "STARTING");
                 m.put("version", VERSION);
                 m.put("time", System.currentTimeMillis());
+                if (!ready) m.put("message", startupError != null ? startupError : "Server is starting, try again in a few seconds.");
                 json(ex, 200, m); return;
             }
+            if (!ready)
+                throw new ApiException(503, startupError != null
+                        ? "Server could not start: " + startupError
+                        : "Server is starting, try again in a few seconds.");
             if (method.equals("POST") && path.equals("/login")) { login(ex); return; }
 
             User me = authenticate(ex);
