@@ -91,7 +91,7 @@ async function api(method, path, body) {
   try {
     res = await fetch("/api" + path, opt);
   } catch (e) {
-    throw new Error("Cannot reach the server. Is ApiServer running? Open http://localhost:8080");
+    throw new Error("Cannot reach the server. Check your connection and API backend configuration.");
   }
   const isJson = (res.headers.get("Content-Type") || "").includes("json");
   const data = isJson ? await res.json() : await res.text();
