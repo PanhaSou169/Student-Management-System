@@ -1,14 +1,14 @@
 /* ================================================================
    config.js — tell the website where the backend (Java server) is.
 
-   * Running on your computer, or the Java server (Railway) serves the site itself:
-       leave it EMPTY:      window.SMS_API_BASE = "";
+   STEP 1. Open your Railway link + /api/health in the browser.
+           It must show  {"status":"OK",...}
+   STEP 2. Replace the link below with your Railway link:
+           - keep the quotes
+           - start with https://
+           - NO slash at the end
+   STEP 3. Redeploy (push to GitHub). Then hard refresh: Ctrl+Shift+R
 
-   * Website on Vercel, backend on Railway: put the Railway link here,
-     with https:// and WITHOUT a slash at the end:
-       window.SMS_API_BASE = "https://your-app.up.railway.app";
-
-   Check the link first: open  <your link>/api/health  in the browser.
-   It must show {"status":"OK",...}
+   (If you open the site from the Railway link itself, leave it as "".)
    ================================================================ */
-window.SMS_API_BASE = "";
+window.SMS_API_BASE = "https://PASTE-YOUR-RAILWAY-LINK-HERE";
