@@ -4,6 +4,10 @@
    Open it at  http://localhost:8080  — do NOT double-click index.html.
    ================================================================ */
 
+/* Where the backend lives. Empty = same address as this page (when Java serves the site).
+   On Vercel, set it in config.js to your Railway link. */
+const API_BASE = String(window.SMS_API_BASE || "").trim().replace(/\/+$/, "");
+
 /* ---------------- state ---------------- */
 let token = sessionStorage.getItem("sms_token");
 let currentUser = null;
@@ -89,9 +93,13 @@ async function api(method, path, body) {
   }
   let res;
   try {
-    res = await fetch("/api" + path, opt);
+    res = await fetch(API_BASE + "/api" + path, opt);
   } catch (e) {
-    throw new Error("Cannot reach the server. Check your connection and API backend configuration.");
+    throw new Error(
+      API_BASE
+        ? "Cannot reach the backend at " + API_BASE + " — check the link in config.js and that it opens in the browser."
+        : "Cannot reach the server. Is ApiServer running? Open http://localhost:8080",
+    );
   }
   const isJson = (res.headers.get("Content-Type") || "").includes("json");
   const data = isJson ? await res.json() : await res.text();
@@ -100,6 +108,11 @@ async function api(method, path, body) {
       logout();
       toast("Session expired. Please sign in again.", "error");
     }
+    if (!isJson && [404, 502, 503, 504].includes(res.status))
+      throw new Error(
+        `The website cannot reach the backend (HTTP ${res.status}). ` +
+          "Put your real Railway link in config.js (SMS_API_BASE), redeploy, and check that <link>/api/health opens.",
+      );
     throw new Error((data && data.message) || "Error " + res.status);
   }
   return data;
@@ -115,7 +128,7 @@ const qs = (o) =>
 
 /* download a protected file (needs the Authorization header, so not a plain link) */
 async function downloadFile(path, filename) {
-  const res = await fetch("/api" + path, { headers: { Authorization: "Bearer " + token } });
+  const res = await fetch(API_BASE + "/api" + path, { headers: { Authorization: "Bearer " + token } });
   if (!res.ok) {
     let msg = "Download failed";
     try {
@@ -1017,7 +1030,7 @@ async function startup() {
     box.style.color = ok ? "#6ee7b7" : "#fca5a5";
     box.textContent = msg;
   };
-  if (location.protocol === "file:") {
+  if (location.protocol === "file:" && !API_BASE) {
     say("⚠ Open this app at http://localhost:8080 (start ApiServer first), not from the file.", false);
     return;
   }
