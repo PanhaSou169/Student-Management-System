@@ -6,7 +6,9 @@
 
 /* Where the backend lives. Empty = same address as this page (when Java serves the site).
    On Vercel, set it in config.js to your Railway link. */
-const API_BASE = String(window.SMS_API_BASE || "").trim().replace(/\/+$/, "");
+let API_BASE = String(window.SMS_API_BASE || "").trim().replace(/\/+$/, "");
+if (API_BASE && !/^https?:\/\//i.test(API_BASE)) API_BASE = "https://" + API_BASE;
+const API_BASE_IS_PLACEHOLDER = /PASTE|YOUR-|YOUR_|example\.com/i.test(API_BASE);
 
 /* ---------------- state ---------------- */
 let token = sessionStorage.getItem("sms_token");
@@ -91,6 +93,8 @@ async function api(method, path, body) {
     opt.headers["Content-Type"] = "application/json";
     opt.body = JSON.stringify(body);
   }
+  if (API_BASE_IS_PLACEHOLDER)
+    throw new Error("config.js still contains the placeholder. Replace it with your real Railway link (https://….up.railway.app), then redeploy.");
   let res;
   try {
     res = await fetch(API_BASE + "/api" + path, opt);
