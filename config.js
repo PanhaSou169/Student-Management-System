@@ -1,13 +1,5 @@
-/* ================================================================
-   config.js — OPTIONAL.
-
-   You do NOT have to edit this file. If the website cannot find the
-   backend, the login page shows a "Backend link" box: paste your
-   Railway link there once and press Connect. It is remembered in
-   your browser.
-
-   Only if you want the link built into the site, put it here:
-       window.SMS_API_BASE = "https://your-app.up.railway.app";
-   (https://, no slash at the end). Leave "" to use the Connect box.
-   ================================================================ */
-window.SMS_API_BASE = "";
+/* Put your Railway backend link here (no "/api" and no "/" at the end).
+   Example: window.SMS_API_BASE = "https://sms-production-1a2b.up.railway.app";
+   Test it first: open  <your link>/api/health  in the browser -> it must show {"status":"OK",...}
+   Leave it "" ONLY when Java (ApiServer) serves the website itself (localhost:8080 or Railway). */
+window.SMS_API_BASE = "https://YOUR-RAILWAY-LINK.up.railway.app";
