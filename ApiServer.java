@@ -36,7 +36,8 @@ public class ApiServer {
     static final String VERSION = "3.0.0-sms";
 
     static final int PORT = Integer.parseInt(env("PORT", "8080"));
-    static final boolean ONLINE = System.getenv("PORT") != null;
+    static final boolean ONLINE = System.getenv("PORT") != null
+            && !"true".equalsIgnoreCase(System.getenv("SMS_LOCAL_RUN"));
     static final boolean LOG_REQUESTS = "true".equalsIgnoreCase(env("SMS_LOG_REQUESTS", "false"));
     static final long SESSION_MS = 8 * 60 * 60 * 1000L;
     static final SecureRandom RANDOM = new SecureRandom();
@@ -89,7 +90,6 @@ public class ApiServer {
         server.createContext("/", ApiServer::handleStatic);
         server.setExecutor(Executors.newSingleThreadExecutor()); // one request at a time = safe DB access
         server.start();
-        System.out.println("PORT variable: " + System.getenv("PORT") + "  (hosted mode: " + ONLINE + ")");
         System.out.println("Web server listening on port " + PORT
                 + (ONLINE ? " (all addresses)" : "  ->  http://localhost:" + PORT));
 
@@ -104,6 +104,8 @@ public class ApiServer {
             init();
             ready = true;
             System.out.println("Ready. Server running" + (ONLINE ? "." : " -> http://localhost:" + PORT + "   (Ctrl+C to stop)"));
+            if (!ONLINE && "true".equalsIgnoreCase(System.getenv("SMS_OPEN_BROWSER")))
+                openBrowser();
         } catch (Exception e) {
             startupError = e.getMessage() == null ? e.toString() : e.getMessage();
             System.err.println("ERROR: " + startupError);
@@ -113,6 +115,20 @@ public class ApiServer {
             }
             // on a host: stay up so the message is visible at /api/health
             e.printStackTrace();
+        }
+    }
+
+    static void openBrowser() {
+        String url = "http://localhost:" + PORT + "/";
+        if (!java.awt.Desktop.isDesktopSupported()) {
+            System.out.println("Could not open a browser automatically. Open " + url);
+            return;
+        }
+        try {
+            java.awt.Desktop.getDesktop().browse(java.net.URI.create(url));
+        } catch (IOException | UnsupportedOperationException e) {
+            System.err.println("Could not open a browser automatically: " + e.getMessage());
+            System.out.println("Open " + url);
         }
     }
 
@@ -185,22 +201,6 @@ public class ApiServer {
         System.out.println("API:       " + VERSION);
         System.out.println("SQL:       " + dbUrl + dbName);
         System.out.println("CSV files: " + csvStore.directory());
-
-        // Recovery: set SMS_RESET_ADMIN=true together with SMS_ADMIN_PASSWORD to (re)create admin A001
-        // with that password and unlock it. Remove BOTH variables after you have logged in.
-        String resetPw = System.getenv("SMS_ADMIN_PASSWORD");
-        if ("true".equalsIgnoreCase(System.getenv("SMS_RESET_ADMIN")) && resetPw != null && !resetPw.isBlank()) {
-            if (school.find("A001").isPresent()) {
-                auth.resetPassword(new User("SETUP", "Setup", "ADMIN", null), "A001", resetPw);
-                System.out.println("Admin A001: password reset from SMS_ADMIN_PASSWORD and account unlocked. "
-                        + "Now REMOVE SMS_RESET_ADMIN and SMS_ADMIN_PASSWORD from the host settings.");
-            } else {
-                String newId = auth.createUser("setup", "ADMIN", env("SMS_ADMIN_NAME", "Administrator"), null, resetPw);
-                System.out.println("Admin created with ID " + newId + ". "
-                        + "Now REMOVE SMS_RESET_ADMIN and SMS_ADMIN_PASSWORD from the host settings.");
-            }
-            syncCsv();
-        }
 
         if (!auth.hasAdmin() && csvStore.hasData()) {
             if ("true".equalsIgnoreCase(System.getenv("SMS_IMPORT_CSV"))) {
@@ -610,7 +610,7 @@ public class ApiServer {
     //  Login + rate limit
     // ================================================================
     static void login(HttpExchange ex) throws IOException {
-        String ip = clientIp(ex);
+        String ip = ex.getRemoteAddress() == null ? "?" : ex.getRemoteAddress().getAddress().getHostAddress();
         if (!allowLogin(ip))
             throw new ApiException(429, "Too many attempts. Try again in a minute.");
 
@@ -637,15 +637,6 @@ public class ApiServer {
             case LOCKED -> error(ex, 423, "Account locked for " + AuthService.lockMinutes() + " minutes.");
             default -> error(ex, 401, "Wrong ID or password.");
         }
-    }
-
-    /** Behind Railway/Vercel every request comes from the proxy, so use the forwarded address. */
-    static String clientIp(HttpExchange ex) {
-        if (ONLINE) {
-            String f = ex.getRequestHeaders().getFirst("X-Forwarded-For");
-            if (f != null && !f.isBlank()) return f.split(",")[0].trim();
-        }
-        return ex.getRemoteAddress() == null ? "?" : ex.getRemoteAddress().getAddress().getHostAddress();
     }
 
     static boolean allowLogin(String ip) {
@@ -750,7 +741,6 @@ public class ApiServer {
         h.set("Access-Control-Allow-Headers", "Authorization, Content-Type");
         h.set("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
         h.set("Access-Control-Expose-Headers", "Content-Disposition");
-        h.set("Access-Control-Max-Age", "86400");
         h.set("Cache-Control", "no-store");
     }
 
