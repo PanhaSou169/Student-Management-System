@@ -6,13 +6,20 @@
 
 /* Where the backend lives. Empty = same address as this page (when Java serves the site).
    On Vercel, set it in config.js to your Railway link. */
-const API_BASE = (() => {
-  let b = String(window.SMS_API_BASE || "").trim();
-  if (!b || /YOUR[-_ ]/i.test(b)) return ""; // config.js missing or still the placeholder
+const SAVED_KEY = "sms_api_base";
+function normalizeBase(v) {
+  let b = String(v || "").trim();
+  if (!b || /YOUR[-_ ]/i.test(b)) return ""; // empty or still the placeholder
   if (!/^https?:\/\//i.test(b)) b = "https://" + b; // allow "xxx.up.railway.app" without https://
   return b.replace(/\/+$/, "").replace(/\/api$/i, ""); // no trailing "/" and no "/api"
-})();
-const ON_STATIC_HOST = !API_BASE && !/^(localhost|127\.0\.0\.1)$/.test(location.hostname) && location.protocol !== "file:";
+}
+function savedBase() {
+  try { return localStorage.getItem(SAVED_KEY) || ""; } catch (_) { return ""; }
+}
+/* config.js wins; if it is empty, use the link the user pasted on the login page */
+let API_BASE = normalizeBase(window.SMS_API_BASE) || normalizeBase(savedBase());
+const onStaticHost = () =>
+  !API_BASE && !/^(localhost|127\.0\.0\.1)$/.test(location.hostname) && location.protocol !== "file:";
 
 /* ---------------- state ---------------- */
 let token = sessionStorage.getItem("sms_token");
@@ -114,14 +121,16 @@ async function api(method, path, body) {
       logout();
       toast("Session expired. Please sign in again.", "error");
     }
-    if (!isJson && [404, 502, 503, 504].includes(res.status))
+    if (!isJson && [404, 502, 503, 504].includes(res.status)) {
+      if (onStaticHost()) showBackendBox();
       throw new Error(
-        ON_STATIC_HOST
+        onStaticHost()
           ? "config.js is missing or still has the placeholder. Set window.SMS_API_BASE to your Railway link " +
               "(e.g. https://xxxx.up.railway.app), redeploy this site, then check <link>/api/health opens."
           : `The website cannot reach the backend (HTTP ${res.status}). ` +
               "Check the Railway link in config.js (SMS_API_BASE), redeploy, and check that <link>/api/health opens.",
       );
+    }
     throw new Error((data && data.message) || "Error " + res.status);
   }
   return data;
@@ -1032,6 +1041,48 @@ views.settings = async function (el) {
   if (bk) bk.onclick = () => downloadFile("/export/backup", "backup.sql").catch((err) => showAlert(err.message, true));
 };
 
+/* ---------------- backend link box (login page) ---------------- */
+function showBackendBox() {
+  if ($("#backend-box")) return;
+  const box = document.createElement("div");
+  box.id = "backend-box";
+  box.className = "field";
+  box.innerHTML = `<label for="backend-url">Backend link (Railway)</label>
+    <div style="display:flex;gap:8px">
+      <input class="input" id="backend-url" placeholder="https://xxxx.up.railway.app" value="${esc(savedBase())}">
+      <button class="btn btn-secondary" type="button" id="backend-save">Connect</button>
+    </div>`;
+  $("#login-form").insertBefore(box, $("#login-btn"));
+  $("#backend-save").onclick = async () => {
+    const st = $("#login-status");
+    const base = normalizeBase($("#backend-url").value);
+    if (!base) {
+      st.style.color = "#fca5a5";
+      st.textContent = "⚠ Paste your real Railway link first.";
+      return;
+    }
+    st.style.color = "#94a3b8";
+    st.textContent = "Checking " + base + " …";
+    try {
+      const r = await fetch(base + "/api/health");
+      const h = await r.json();
+      if (!h || !h.status) throw new Error("not the SMS server");
+      try { localStorage.setItem(SAVED_KEY, base); } catch (_) {}
+      API_BASE = base;
+      if (h.status === "OK") {
+        st.style.color = "#6ee7b7";
+        st.textContent = "✓ Server connected — you can sign in now.";
+      } else {
+        st.style.color = "#fca5a5";
+        st.textContent = "⚠ " + (h.message || "Server is starting… try again in a few seconds.");
+      }
+    } catch (e) {
+      st.style.color = "#fca5a5";
+      st.textContent = "⚠ Cannot open " + base + "/api/health — check the link and that the Railway service is running.";
+    }
+  };
+}
+
 /* ---------------- start-up: check server + restore session ---------------- */
 async function startup() {
   const box = $("#login-status");
@@ -1039,6 +1090,11 @@ async function startup() {
     box.style.color = ok ? "#6ee7b7" : "#fca5a5";
     box.textContent = msg;
   };
+  if (onStaticHost()) {
+    showBackendBox();
+    say("⚠ Paste your Railway link above and press Connect.", false);
+    return;
+  }
   if (location.protocol === "file:" && !API_BASE) {
     say("⚠ Open this app at http://localhost:8080 (start ApiServer first), not from the file.", false);
     return;
