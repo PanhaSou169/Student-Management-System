@@ -6,7 +6,13 @@
 
 /* Where the backend lives. Empty = same address as this page (when Java serves the site).
    On Vercel, set it in config.js to your Railway link. */
-const API_BASE = String(window.SMS_API_BASE || "").trim().replace(/\/+$/, "");
+const API_BASE = (() => {
+  let b = String(window.SMS_API_BASE || "").trim();
+  if (!b || /YOUR[-_ ]/i.test(b)) return ""; // config.js missing or still the placeholder
+  if (!/^https?:\/\//i.test(b)) b = "https://" + b; // allow "xxx.up.railway.app" without https://
+  return b.replace(/\/+$/, "").replace(/\/api$/i, ""); // no trailing "/" and no "/api"
+})();
+const ON_STATIC_HOST = !API_BASE && !/^(localhost|127\.0\.0\.1)$/.test(location.hostname) && location.protocol !== "file:";
 
 /* ---------------- state ---------------- */
 let token = sessionStorage.getItem("sms_token");
@@ -110,8 +116,11 @@ async function api(method, path, body) {
     }
     if (!isJson && [404, 502, 503, 504].includes(res.status))
       throw new Error(
-        `The website cannot reach the backend (HTTP ${res.status}). ` +
-          "Put your real Railway link in config.js (SMS_API_BASE), redeploy, and check that <link>/api/health opens.",
+        ON_STATIC_HOST
+          ? "config.js is missing or still has the placeholder. Set window.SMS_API_BASE to your Railway link " +
+              "(e.g. https://xxxx.up.railway.app), redeploy this site, then check <link>/api/health opens."
+          : `The website cannot reach the backend (HTTP ${res.status}). ` +
+              "Check the Railway link in config.js (SMS_API_BASE), redeploy, and check that <link>/api/health opens.",
       );
     throw new Error((data && data.message) || "Error " + res.status);
   }
