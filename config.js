@@ -1,5 +1,3 @@
-/* Put your Railway backend link here (no "/api" and no "/" at the end).
-   Example: window.SMS_API_BASE = "https://sms-production-1a2b.up.railway.app";
-   Test it first: open  <your link>/api/health  in the browser -> it must show {"status":"OK",...}
-   Leave it "" ONLY when Java (ApiServer) serves the website itself (localhost:8080 or Railway). */
-window.SMS_API_BASE = "https://YOUR-RAILWAY-LINK.up.railway.app";
+/* Local mode: Java (ApiServer) serves the website AND the API on the same address,
+   so leave this empty. Open  http://localhost:8080  (do not double-click index.html). */
+window.SMS_API_BASE = "";
