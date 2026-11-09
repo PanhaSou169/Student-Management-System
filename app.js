@@ -6,21 +6,7 @@
 
 /* Where the backend lives. Empty = same address as this page (when Java serves the site).
    On Vercel, set it in config.js to your Railway link. */
-function cleanBase(v) {
-  v = String(v || "").trim();
-  if (!v || /PASTE|YOUR-|YOUR_|example\.com/i.test(v)) return "";
-  v = v.replace(/\/api(\/.*)?$/i, "").replace(/\/+$/, "");
-  if (!/^https?:\/\//i.test(v)) v = "https://" + v;
-  return v;
-}
-function savedBase() {
-  try {
-    return cleanBase(localStorage.getItem("sms_api_base"));
-  } catch (_) {
-    return "";
-  }
-}
-let API_BASE = cleanBase(window.SMS_API_BASE) || savedBase();
+const API_BASE = String(window.SMS_API_BASE || "").trim().replace(/\/+$/, "");
 
 /* ---------------- state ---------------- */
 let token = sessionStorage.getItem("sms_token");
@@ -122,14 +108,11 @@ async function api(method, path, body) {
       logout();
       toast("Session expired. Please sign in again.", "error");
     }
-    if (!isJson && [404, 502, 503, 504].includes(res.status)) {
-      const where = (API_BASE || location.origin) + "/api" + path;
-      const said = String(data).replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim().slice(0, 160);
-      const hint = API_BASE
-        ? "The backend answered with an error. Open " + API_BASE + "/api/health in the browser and read what it shows."
-        : "No backend is set. Reload the page and paste your Railway link in the Connect box.";
-      throw new Error(`HTTP ${res.status} from ${where} — "${said || "no details"}". ${hint}`);
-    }
+    if (!isJson && [404, 502, 503, 504].includes(res.status))
+      throw new Error(
+        `The website cannot reach the backend (HTTP ${res.status}). ` +
+          "Put your real Railway link in config.js (SMS_API_BASE), redeploy, and check that <link>/api/health opens.",
+      );
     throw new Error((data && data.message) || "Error " + res.status);
   }
   return data;
@@ -1040,130 +1023,34 @@ views.settings = async function (el) {
   if (bk) bk.onclick = () => downloadFile("/export/backup", "backup.sql").catch((err) => showAlert(err.message, true));
 };
 
-/* ---------------- start-up: find the backend, restore the session ---------------- */
-function sayStatus(msg, ok) {
-  const box = $("#login-status");
-  box.style.color = ok ? "#6ee7b7" : "#fca5a5";
-  box.textContent = msg;
-}
-
-async function probe(base) {
-  const r = await fetch(base + "/api/health", { cache: "no-store" });
-  if (!(r.headers.get("Content-Type") || "").includes("json"))
-    throw new Error(`HTTP ${r.status} — that address did not answer like the school server`);
-  const h = await r.json();
-  if (!h || !h.status) throw new Error("that address gave an unexpected answer");
-  return h;
-}
-
-function connectBox() {
-  let box = $("#connect-box");
-  if (box) return box;
-  $("#login-status").insertAdjacentHTML(
-    "afterend",
-    `<div id="connect-box" hidden style="margin-top:18px;padding-top:16px;border-top:1px solid var(--border)">
-      <div class="field" style="margin-bottom:10px">
-        <label for="connect-url">Backend link</label>
-        <input class="input" id="connect-url" placeholder="https://your-app.up.railway.app" autocomplete="off">
-      </div>
-      <button class="btn btn-secondary btn-block" type="button" id="connect-btn">Connect</button>
-      <p class="subtitle" style="margin-top:10px;text-align:center">
-        Paste the address of your Java server (Railway).<br>
-        <b>Test it first:</b> open <code>that-address/api/health</code> in a new tab —
-        it must show <code>{"status":"OK"…}</code></p>
-    </div>`,
-  );
-  box = $("#connect-box");
-  $("#connect-btn").onclick = connectNow;
-  $("#connect-url").onkeydown = (e) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      connectNow();
-    }
-  };
-  return box;
-}
-
-async function connectNow() {
-  const base = cleanBase($("#connect-url").value);
-  if (!base) return sayStatus("⚠ Paste your backend link first (https://….up.railway.app)", false);
-  const btn = $("#connect-btn");
-  btn.disabled = true;
-  btn.textContent = "Checking…";
-  try {
-    await probe(base);
-    try {
-      localStorage.setItem("sms_api_base", base);
-    } catch (_) {}
-    API_BASE = base;
-    await startup();
-  } catch (e) {
-    sayStatus(`⚠ Cannot use ${base}: ${e.message}. Open ${base}/api/health in a new tab and see what it says.`, false);
-  } finally {
-    btn.disabled = false;
-    btn.textContent = "Connect";
-  }
-}
-
+/* ---------------- start-up: check server + restore session ---------------- */
 async function startup() {
-  const box = connectBox();
+  const box = $("#login-status");
+  const say = (msg, ok) => {
+    box.style.color = ok ? "#6ee7b7" : "#fca5a5";
+    box.textContent = msg;
+  };
   if (location.protocol === "file:" && !API_BASE) {
-    sayStatus("⚠ Open this app from your website or http://localhost:8080, or paste your backend link below.", false);
-    box.hidden = false;
+    say("⚠ Open this app at http://localhost:8080 (start ApiServer first), not from the file.", false);
     return;
   }
-  $("#login-btn").disabled = true;
-
-  let health = null,
-    problem = "";
   try {
-    health = await probe(API_BASE);
-  } catch (e) {
-    problem = e.message || String(e);
-  }
-  if (!health) {
-    sayStatus(
-      (API_BASE ? `⚠ Cannot reach the backend at ${API_BASE} (${problem}).` : "⚠ This website has no backend yet.") +
-        " Paste your Railway link below.",
-      false,
-    );
-    box.hidden = false;
-    return;
-  }
-  if (health.status !== "OK") {
-    // the Java server is reachable but could not start (for example MySQL settings): show its own message
-    sayStatus("⚠ " + (health.message || "Server is starting… refresh in a few seconds."), false);
-    box.hidden = false;
-    return;
-  }
-
-  box.hidden = true;
-  $("#login-btn").disabled = false;
-  if (token) {
-    try {
-      currentUser = await get("/me");
-      initDashboard();
-      return;
-    } catch (_) {
-      token = null;
-      currentUser = null;
-      sessionStorage.removeItem("sms_token");
-    }
-  }
-  sayStatus("✓ Server connected", true);
-  if (savedBase()) {
-    const a = document.createElement("a");
-    a.href = "#";
-    a.textContent = "  · change backend";
-    a.style.color = "#a5b4fc";
-    a.onclick = (e) => {
-      e.preventDefault();
+    if (token) {
       try {
-        localStorage.removeItem("sms_api_base");
-      } catch (_) {}
-      location.reload();
-    };
-    $("#login-status").append(a);
+        currentUser = await get("/me");
+        initDashboard();
+        return;
+      } catch (_) {
+        token = null;
+        currentUser = null;
+        sessionStorage.removeItem("sms_token");
+      }
+    }
+    const h = await get("/health");
+    if (h.status === "OK") say("✓ Server connected", true);
+    else say("⚠ " + (h.message || "Server is starting… refresh in a few seconds."), false);
+  } catch (e) {
+    say("⚠ " + e.message, false);
   }
 }
 startup();
