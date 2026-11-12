@@ -30,7 +30,10 @@ MySQL database.
 4. In the Vercel project's Settings > Environment Variables, set
    `SMS_BACKEND_URL` to the backend's public HTTPS origin only, for example
    `https://your-api.example.com` (no `/api` path or trailing route). Apply it
-   to the environments you use, then redeploy.
+   to the environments you use, then redeploy. Leave `window.SMS_API_BASE`
+   empty in `config.js`: the browser calls the same-origin `/api/*` proxy, and
+   the proxy forwards requests to the Java backend. Do not put backend or
+   database credentials in frontend files.
 5. Open the Vercel deployment URL. The web client sends `/api/*` requests to
    the Vercel function, which forwards them to the Java backend.
 
