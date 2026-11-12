@@ -4,20 +4,9 @@
    Open it at  http://localhost:8080  — do NOT double-click index.html.
    ================================================================ */
 
-/* Where the backend lives. Empty = same address as this page (when Java serves the site).
-   On Vercel, set it in config.js to your Railway link. */
-const IS_LOCAL = location.protocol === "file:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
-const API_BASE = (() => {
-  let b = String(window.SMS_API_BASE || "").trim();
-  if (b && !/YOUR[-_ ]/i.test(b)) {
-    if (!/^https?:\/\//i.test(b)) b = "https://" + b;
-    return b.replace(/\/+$/, "").replace(/\/api$/i, "");
-  }
-  /* Opened from a file, Live Server, VS Code preview ... (not the Java server itself)?
-     Then talk to the Java server on port 8080 (CORS is already enabled in ApiServer). */
-  if (IS_LOCAL && location.port !== "8080") return "http://localhost:8080";
-  return ""; // same address as this page (Java serves the site)
-})();
+/* Empty = same-origin API, either served by Java or forwarded by the Vercel proxy.
+   For Vercel, configure SMS_BACKEND_URL on the server, not in this public file. */
+const API_BASE = String(window.SMS_API_BASE || "").trim().replace(/\/+$/, "");
 
 /* ---------------- state ---------------- */
 let token = sessionStorage.getItem("sms_token");
@@ -107,8 +96,9 @@ async function api(method, path, body) {
     res = await fetch(API_BASE + "/api" + path, opt);
   } catch (e) {
     throw new Error(
-      "Cannot reach the server" + (API_BASE ? " at " + API_BASE : "") +
-        ". Start ApiServer (java -cp \".;mysql-connector-j.jar\" ApiServer), keep that window open, then open http://localhost:8080",
+      API_BASE
+        ? "Cannot reach the backend at " + API_BASE + " — check the link in config.js and that it opens in the browser."
+        : "Cannot reach the server. Check that the website URL is correct and its backend is running and configured.",
     );
   }
   const isJson = (res.headers.get("Content-Type") || "").includes("json");
@@ -120,8 +110,10 @@ async function api(method, path, body) {
     }
     if (!isJson && [404, 502, 503, 504].includes(res.status))
       throw new Error(
-        `This page is not being served by the Java server (HTTP ${res.status}). ` +
-          "Run ApiServer, then open http://localhost:8080 in the browser.",
+        `The website cannot reach the backend (HTTP ${res.status}). ` +
+          (API_BASE
+            ? "Check the backend link in config.js and confirm that <backend-url>/api/health opens."
+            : "Check the hosting platform's backend URL setting and confirm that <backend-url>/api/health opens."),
       );
     throw new Error((data && data.message) || "Error " + res.status);
   }
@@ -1040,6 +1032,10 @@ async function startup() {
     box.style.color = ok ? "#6ee7b7" : "#fca5a5";
     box.textContent = msg;
   };
+  if (location.protocol === "file:" && !API_BASE) {
+    say("⚠ Open this app at http://localhost:8080 (start ApiServer first), not from the file.", false);
+    return;
+  }
   try {
     if (token) {
       try {
